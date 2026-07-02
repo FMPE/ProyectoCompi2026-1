@@ -1,0 +1,40 @@
+.data
+print_fmt: .string "%ld \n"
+print_float_fmt: .string "%f \n"
+print_str_fmt: .string "%s\n"
+.text
+.globl main
+main:
+ pushq %rbp
+ movq %rsp, %rbp
+ subq $96, %rsp
+ movq $0, -8(%rbp)
+ movq $1, %rax
+ addq $2, %rax
+ movl %eax, -16(%rbp)
+ movq $10, %rax
+ subq $3, %rax
+ movl %eax, -12(%rbp)
+ movq -16(%rbp), %rax
+ movq %rax, -8(%rbp)
+ leaq -8(%rbp), %rax
+ addq $0, %rax
+ movl (%rax), %eax
+ cltq
+ movq %rax, %rsi
+ leaq print_fmt(%rip), %rdi
+ movl $0, %eax
+ call printf@PLT
+ leaq -8(%rbp), %rax
+ addq $4, %rax
+ movl (%rax), %eax
+ cltq
+ movq %rax, %rsi
+ leaq print_fmt(%rip), %rdi
+ movl $0, %eax
+ call printf@PLT
+ movq $0, %rax
+.L_return_main:
+ leave
+ ret
+.section .note.GNU-stack,"",@progbits

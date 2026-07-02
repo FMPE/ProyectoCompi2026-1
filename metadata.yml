@@ -1,0 +1,14 @@
+---
+:id: 373531301
+:submitters:
+- :name: Fernando André Guillén Rodriguez
+  :email: fernando.guillen@utec.edu.pe
+- :name: Franco Matias Pacheco Espino
+  :email: franco.pacheco@utec.edu.pe
+:created_at: !ruby/object:ActiveSupport::TimeWithZone
+  utc: 2025-11-27 04:00:32.685429000 Z
+  zone: !ruby/object:ActiveSupport::TimeZone
+    name: America/Los_Angeles
+  time: 2025-11-26 20:00:32.685429000 Z
+:status: processed
+:score: 15.0

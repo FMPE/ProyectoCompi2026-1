@@ -1,0 +1,18 @@
+fn main() {
+    let b = Box::new(42);
+    let x = *b;
+    println("x (=*b): ", x);
+
+    *b = 100;
+    println("*b tras *b=100: ", *b);
+
+    let c: Box<i64> = Box::new(1000000);
+    println("*c: ", *c);
+
+    let mut i: i32 = 0;
+    while (i < 3) {
+        let t = Box::new(i);
+        println("loop *t: ", *t);
+        i = i + 1;
+    }
+}

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compilador Rust → x86-64 | CS3402 UTEC</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:16px 24px}
+header h1{font-size:1.25rem;font-weight:700}
+header p{color:#94a3b8;font-size:.875rem;margin-top:4px}
+.tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid #334155;background:#1e293b;padding:0 8px;align-items:center}
+.tab{padding:12px 16px;font-size:.875rem;color:#94a3b8;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tab:hover{color:#fff}
+.tab.active{color:#fb923c;border-bottom-color:#f97316}
+.tab-actions{margin-left:auto;display:flex;align-items:center;gap:12px;padding:8px}
+.btn{padding:8px 20px;border:none;border-radius:8px;font-weight:700;font-size:.875rem;cursor:pointer}
+.btn-primary{background:#f97316;color:#fff}
+.btn-primary:hover{background:#ea580c}
+.btn-primary:disabled{background:#475569;cursor:not-allowed}
+.btn-blue{background:#2563eb;color:#fff}
+.btn-green{background:#16a34a;color:#fff}
+.btn-amber{background:#d97706;color:#fff}
+.btn-red{background:#dc2626;color:#fff}
+.panel{display:none;padding:16px;max-width:1200px;margin:0 auto}
+.panel.active{display:block}
+.card{background:#1e293b;border-radius:12px;padding:16px;margin-bottom:16px}
+.card h2{font-size:1rem;margin-bottom:12px}
+textarea{width:100%;height:420px;background:#0f172a;color:#fde68a;font-family:Consolas,monospace;font-size:13px;padding:16px;border:1px solid #334155;border-radius:8px;resize:vertical}
+textarea:focus{outline:none;border-color:#f97316}
+.mono{font-family:Consolas,Monaco,monospace}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #334155}
+th{color:#94a3b8}
+.err{background:#7f1d1d40;border:1px solid #ef4444;color:#fecaca;padding:12px;border-radius:8px;margin:16px;display:none}
+.err.show{display:flex;justify-content:space-between;align-items:start}
+.asm-line{display:flex;padding:2px 12px;font-size:12px}
+.asm-line.hl{background:#f59e0b40}
+.asm-num{width:32px;color:#64748b;text-align:right;margin-right:8px;flex-shrink:0}
+.ast-type{color:#fb923c;font-weight:700}
+.ast-name{color:#67e8f9}
+.ast-val{color:#fde047}
+.ast-field{color:#94a3b8}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.grid2{grid-template-columns:1fr}}
+.stat-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+.bar{height:10px;background:#334155;border-radius:5px;margin-top:12px;overflow:hidden}
+.bar-fill{height:100%;background:#f97316;border-radius:5px;transition:width .3s}
+.console{background:#000;border-radius:8px;padding:16px;min-height:160px;font-family:Consolas,monospace;color:#4ade80;font-size:14px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+footer{text-align:center;color:#64748b;font-size:11px;padding:16px}
+.badge{display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;background:#166534;color:#fff}
+</style>
+</head>
+<body>
+<header>
+  <h1>Compilador Rust → x86-64</h1>
+  <p>Pipeline integrado | CS3402 Compiladores — UTEC</p>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="code">Código</button>
+  <button class="tab" data-tab="tokens">Tokens</button>
+  <button class="tab" data-tab="ast">AST</button>
+  <button class="tab" data-tab="asm">Assembly</button>
+  <button class="tab" data-tab="sim">Simulación</button>
+  <button class="tab" data-tab="output">Salida &amp; Stats</button>
+  <div class="tab-actions">
+    <label style="font-size:12px;color:#94a3b8"><input type="checkbox" id="optChk" checked> Optimizar</label>
+    <button class="btn btn-primary" id="btnCompile">Compilar</button>
+  </div>
+</div>
+
+<div class="err" id="errBox"><span id="errMsg"></span><button onclick="hideErr()" style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:18px">✕</button></div>
+
+<div class="panel active" id="panel-code">
+  <div class="card">
+    <h2 style="color:#fb923c">Editor de código</h2>
+    <textarea id="codeEditor" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<div class="panel" id="panel-tokens">
+  <div class="card">
+    <h2 style="color:#fb923c">Análisis Léxico — Tokens</h2>
+    <div id="tokensView"><p style="color:#64748b">Presiona Compilar para ver los tokens.</p></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-ast">
+  <div class="card">
+    <h2 style="color:#4ade80">Análisis Sintáctico — AST</h2>
+    <div id="astView" class="mono" style="max-height:480px;overflow:auto;background:#0f172a;padding:12px;border-radius:8px"><p style="color:#64748b">Presiona Compilar para ver el AST.</p></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-asm">
+  <div class="card">
+    <h2 style="color:#22d3ee">Generación de Código — Assembly x86-64</h2>
+    <div id="asmView" class="mono" style="max-height:480px;overflow:auto;background:#0f172a;border-radius:8px"><p style="color:#64748b;padding:12px">Presiona Compilar.</p></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-sim">
+  <div class="card">
+    <h2 style="color:#a78bfa">Simulación x86-64</h2>
+    <div class="controls">
+      <button class="btn btn-blue" id="btnStep">Paso</button>
+      <button class="btn btn-green" id="btnRun">Run</button>
+      <button class="btn btn-amber" id="btnReset">Reset</button>
+      <span id="simStatus"></span>
+    </div>
+    <div class="grid2">
+      <div><h3 style="font-size:13px;color:#4ade80;margin-bottom:8px">Registros</h3><div id="regsView" class="mono" style="font-size:12px"></div></div>
+      <div><h3 style="font-size:13px;color:#22d3ee;margin-bottom:8px">Instrucción actual</h3><pre id="curInstr" class="mono" style="color:#fde68a;font-size:13px">—</pre></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-output">
+  <div class="grid2">
+    <div class="card">
+      <h2 style="color:#4ade80">Salida del programa</h2>
+      <div class="console" id="consoleOut">...</div>
+    </div>
+    <div class="card">
+      <h2 style="color:#fb923c">Estadísticas de optimización</h2>
+      <div id="statsView"><p style="color:#64748b">Compila un programa para ver stats.</p></div>
+    </div>
+  </div>
+</div>
+
+<footer>Pipeline: Lexer → Parser/AST → Semántica → Codegen x86 → Optimización → Simulación</footer>
+
+<script>
+const DEFAULT_CODE = `fn main() {
+    let x = 5;
+    let s: String = "Hola compilador";
+    let mut m: i32[2][3];
+    m[0][0] = x + 10;
+    println!("{}", m[0][0]);
+    println!("{}", s);
+}`;
+
+const API = window.location.origin;
+let result = null;
+let sim = { lines:[], lbls:{}, st:null, running:false, timer:null };
+
+document.getElementById('codeEditor').value = DEFAULT_CODE;
+
+document.querySelectorAll('.tab').forEach(btn => {
+  if (!btn.dataset.tab) return;
+  btn.onclick = () => showTab(btn.dataset.tab);
+});
+
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
+}
+
+function showErr(msg) {
+  document.getElementById('errMsg').textContent = msg;
+  document.getElementById('errBox').classList.add('show');
+}
+function hideErr() { document.getElementById('errBox').classList.remove('show'); }
+
+function renderAST(node, depth) {
+  if (node == null) return '<span style="color:#64748b">null</span>';
+  if (typeof node !== 'object') return esc(String(node));
+  depth = depth || 0;
+  const pad = depth * 16;
+  let h = `<div style="padding-left:${pad}px" class="py-0.5"><span class="ast-type">${esc(node.type||'Node')}</span>`;
+  if (node.name) h += ` <span class="ast-name">(${esc(node.name)})</span>`;
+  if (node.value !== undefined) h += ` <span class="ast-val">= ${esc(node.value)}</span>`;
+  if (node.typeName) h += ` <span style="color:#c084fc">: ${esc(node.typeName)}</span>`;
+  if (node.op) h += ` <span style="color:#4ade80">[${esc(node.op)}]</span>`;
+  h += '</div>';
+  for (const k of Object.keys(node)) {
+    if (['type','name','value','typeName','op','mutable'].includes(k)) continue;
+    const v = node[k];
+    if (v == null) continue;
+    h += `<div style="padding-left:${pad+16}px"><span class="ast-field">${esc(k)}: </span>`;
+    if (Array.isArray(v)) v.forEach((item,i) => { h += renderAST(item, depth+2); });
+    else if (typeof v === 'object') h += renderAST(v, depth+1);
+    else h += esc(String(v));
+    h += '</div>';
+  }
+  return h;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderTokens(tokens) {
+  if (!tokens || !tokens.length) return '<p style="color:#64748b">Sin tokens</p>';
+  let h = '<table><thead><tr><th>#</th><th>Tipo</th><th>Texto</th></tr></thead><tbody>';
+  tokens.filter(t => t.type !== 'END').forEach((t,i) => {
+    h += `<tr><td>${i+1}</td><td style="color:#22d3ee">${esc(t.type)}</td><td style="color:#fde68a">${esc(t.text)}</td></tr>`;
+  });
+  return h + '</tbody></table>';
+}
+
+function renderAsm(asm, curLine) {
+  if (!asm) return '<p style="color:#64748b;padding:12px">Sin assembly</p>';
+  return asm.split('\n').map((l,i) =>
+    `<div class="asm-line${i===curLine?' hl':''}"><span class="asm-num">${i+1}</span><span>${esc(l)}</span></div>`
+  ).join('');
+}
+
+function renderStats(stats) {
+  if (!stats) return '<p style="color:#64748b">Sin stats</p>';
+  const pct = stats.reductionPercent || 0;
+  return `
+    <div class="stat-row"><span style="color:#94a3b8">Instrucciones originales</span><span>${stats.originalInstructions}</span></div>
+    <div class="stat-row"><span style="color:#94a3b8">Instrucciones optimizadas</span><span style="color:#4ade80">${stats.optimizedInstructions}</span></div>
+    <div class="stat-row"><span style="color:#94a3b8">Reducción</span><span style="color:#fde047">${pct}%</span></div>
+    <div class="stat-row"><span style="color:#94a3b8">DAG hits (CSE)</span><span>${stats.dagHits}</span></div>
+    <div class="stat-row"><span style="color:#94a3b8">Peephole</span><span>${stats.peepholeReductions}</span></div>
+    <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>`;
+}
+
+function initSimState() {
+  return { regs:{rax:0,rbx:0,rcx:0,rdx:0,rsi:0,rdi:0,rbp:0,rsp:504,flags:{ZF:0,SF:0}}, stack:new Array(32).fill(0), mem:{}, out:[], done:false, line:0, strMap:{} };
+}
+
+function parseAsm(code) {
+  const strMap = {};
+  code.split('\n').forEach(l => {
+    const m = l.match(/^(\w+): \.string "(.*)\\0"/);
+    if (m) strMap[m[1]] = m[2].replace(/\\n/g,'\n').replace(/\\"/g,'"');
+  });
+  const lines = code.split('\n');
+  const lbls = {};
+  let mainLine = 0;
+  lines.forEach((l,i) => { const t=l.trim(); if (t.endsWith(':')) { lbls[t.slice(0,-1)]=i; if(t==='main:') mainLine=i; }});
+  const st = initSimState();
+  st.line = mainLine; st.regs.rbp = 512; st.strMap = strMap;
+  return { lines, lbls, st };
+}
+
+function execInstr(instr, st, lbls) {
+  const ns = JSON.parse(JSON.stringify(st));
+  const ln = instr.trim();
+  if (!ln || ln[0]==='.' || ln.endsWith(':')) { ns.line++; return ns; }
+  const p = ln.split(/\s+/);
+  const op = p[0].toLowerCase();
+  if (op==='movq'||op==='movl') {
+    const getVal = s => { s=(s||'').replace(',',''); if(s[0]==='$')return parseInt(s.slice(1))||0; if(s[0]==='%'){const r=s.slice(1).toLowerCase().replace('e',''); return ns.regs[r]||ns.regs[s.slice(1).toLowerCase()]||0;} return 0; };
+    const dst = (p[2]||'').replace(',','');
+    const v = getVal(p[1]);
+    if (dst[0]==='%') { const r=dst.slice(1).toLowerCase(); ns.regs[r]=v; }
+  } else if (op==='leaq') {
+    const m = (p[1]||'').match(/(\w+)\(%rip\)/);
+    const dst = (p[2]||'').replace(',','');
+    if (m && ns.strMap[m[1]] && dst[0]==='%') ns.regs[dst.slice(1).toLowerCase()] = m[1];
+    else if ((p[1]||'').match(/(-?\d+)?\(%rbp\)/)) {
+      const mm = p[1].match(/(-?\d+)?\(%rbp\)/);
+      const addr = ns.regs.rbp + (parseInt(mm[1])||0);
+      if (dst[0]==='%') ns.regs[dst.slice(1).toLowerCase()] = addr;
+    }
+  } else if (op==='addq'||op==='addl') {
+    const src = parseInt((p[1]||'').replace('$','').replace(',',''))||0;
+    const dst = (p[2]||'').replace(',','');
+    if (dst[0]==='%') ns.regs[dst.slice(1).toLowerCase()] = (ns.regs[dst.slice(1).toLowerCase()]||0)+src;
+  } else if (op==='imulq') {
+    const src = parseInt((p[1]||'').replace('$','').replace(',',''))||0;
+    const dst = (p[2]||'').replace(',','');
+    if (dst[0]==='%') ns.regs[dst.slice(1).toLowerCase()] = (ns.regs[dst.slice(1).toLowerCase()]||0)*src;
+  } else if (op==='cmpq'||op==='cmpl') {
+    const a = ns.regs.rax||0; const b = parseInt((p[1]||'').replace(',',''))||0;
+    const r = a-b; ns.regs.flags.ZF = r===0?1:0; ns.regs.flags.SF = r<0?1:0;
+  } else if (op==='je' && ns.regs.flags.ZF && lbls[p[1]]!==undefined) { ns.line=lbls[p[1]]; return ns; }
+  else if (op==='jne' && !ns.regs.flags.ZF && lbls[p[1]]!==undefined) { ns.line=lbls[p[1]]; return ns; }
+  else if (op==='jl' && ns.regs.flags.SF && lbls[p[1]]!==undefined) { ns.line=lbls[p[1]]; return ns; }
+  else if (op==='jmp' && lbls[p[1]]!==undefined) { ns.line=lbls[p[1]]; return ns; }
+  else if (op==='call') {
+    if ((p[1]||'').includes('printf')) {
+      if (typeof ns.regs.rsi==='string' && ns.strMap[ns.regs.rsi]) ns.out.push(ns.strMap[ns.regs.rsi]);
+      else ns.out.push(String(ns.regs.rsi));
+    }
+  } else if (op==='movl') {
+    const m = (p[2]||'').match(/(-?\d+)\(%rbp\)/);
+    if (m) ns.mem[ns.regs.rbp+parseInt(m[1])] = ns.regs.rax;
+    const m2 = (p[1]||'').match(/(-?\d+)\(%rbp\)/);
+    if (m2 && (p[2]||'').includes('%eax')) ns.regs.rax = ns.mem[ns.regs.rbp+parseInt(m2[1])]||0;
+  } else if (op==='leave') { ns.regs.rsp=ns.regs.rbp; ns.regs.rsp+=8; }
+  else if (op==='ret') ns.done=true;
+  ns.line++;
+  return ns;
+}
+
+function updateSimUI() {
+  const st = sim.st;
+  if (!st) return;
+  document.getElementById('regsView').innerHTML = ['rax','rbx','rcx','rdx','rsi','rdi','rbp','rsp']
+    .map(r=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#60a5fa">%${r}</span><span style="color:#fde047">${st.regs[r]}</span></div>`).join('');
+  document.getElementById('curInstr').textContent = sim.lines[st.line] || '—';
+  document.getElementById('consoleOut').innerHTML = st.out.length ? st.out.map(l=>`<div>${esc(String(l))}</div>`).join('') : '<span style="color:#475569">...</span>';
+  document.getElementById('asmView').innerHTML = renderAsm(result?.assembly, st.line);
+  document.getElementById('simStatus').innerHTML = st.done ? '<span class="badge">Completado</span>' : '';
+}
+
+document.getElementById('btnCompile').onclick = async () => {
+  hideErr();
+  const btn = document.getElementById('btnCompile');
+  btn.disabled = true; btn.textContent = 'Compilando...';
+  try {
+    const res = await fetch(API + '/api/compile', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code: document.getElementById('codeEditor').value, optimize: document.getElementById('optChk').checked })
+    });
+    result = await res.json();
+    if (result.success) {
+      document.getElementById('tokensView').innerHTML = renderTokens(result.tokens);
+      document.getElementById('astView').innerHTML = renderAST(result.ast);
+      document.getElementById('asmView').innerHTML = renderAsm(result.assembly, 0);
+      document.getElementById('statsView').innerHTML = renderStats(result.stats);
+      const p = parseAsm(result.assembly);
+      sim.lines = p.lines; sim.lbls = p.lbls; sim.st = p.st;
+      updateSimUI();
+      showTab('tokens');
+    } else {
+      showErr(result.error || 'Error de compilación');
+      showTab('output');
+    }
+  } catch(e) {
+    showErr('No se pudo conectar al servidor. ¿Está corriendo python server.py?');
+  }
+  btn.disabled = false; btn.textContent = 'Compilar';
+};
+
+document.getElementById('btnStep').onclick = () => {
+  if (!sim.st || sim.st.done || sim.st.line >= sim.lines.length) return;
+  sim.st = execInstr(sim.lines[sim.st.line], sim.st, sim.lbls);
+  updateSimUI();
+};
+
+document.getElementById('btnRun').onclick = () => {
+  if (sim.running) { clearInterval(sim.timer); sim.running=false; document.getElementById('btnRun').textContent='Run'; return; }
+  if (!sim.st || sim.st.done) return;
+  sim.running = true; document.getElementById('btnRun').textContent='Pausa';
+  sim.timer = setInterval(() => {
+    if (!sim.st || sim.st.done || sim.st.line >= sim.lines.length) {
+      clearInterval(sim.timer); sim.running=false; document.getElementById('btnRun').textContent='Run'; updateSimUI(); return;
+    }
+    sim.st = execInstr(sim.lines[sim.st.line], sim.st, sim.lbls);
+    updateSimUI();
+  }, 120);
+};
+
+document.getElementById('btnReset').onclick = () => {
+  if (result?.assembly) {
+    const p = parseAsm(result.assembly);
+    sim.lines=p.lines; sim.lbls=p.lbls; sim.st=p.st;
+    clearInterval(sim.timer); sim.running=false;
+    document.getElementById('btnRun').textContent='Run';
+    updateSimUI();
+  }
+};
+</script>
+</body>
+</html>

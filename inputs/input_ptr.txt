@@ -1,0 +1,18 @@
+fn inc(r: &mut i32) {
+    *r = *r + 1;
+}
+
+fn main() {
+    let x: i32 = 10;
+    let p: &i32 = &x;
+    let y: i32 = *p;
+    println("y (deref de &x): ", y);
+
+    let mut z: i32 = 5;
+    let q: &mut i32 = &mut z;
+    *q = 20;
+    println("z tras *q = 20: ", z);
+
+    inc(&mut z);
+    println("z tras inc(&mut z): ", z);
+}

@@ -1,0 +1,5 @@
+program,ours_ms,rustc_ms,clif_ms,gcc_ms,ratio_rustc,ratio_clif,ratio_gcc,rustc_note
+fibonacci.rs,9.52116760017816,364.02824420001707,338.8326418000361,278.78409279965126,38.23,35.59,29.28,
+matrix.rs,8.682146399951307,347.6914102000592,329.9343881999448,249.49316760012152,40.05,38.0,28.74,"Programa Rust estándar: [[0;3];3] e índices 'as usize'. Nuestro compilador ahora soporta el tipo usize y el cast 'as' (i32 -> usize), así que el mismo archivo compila tanto en nuestro compilador como en rustc."
+strings.rs,8.687469599863107,349.9281857999449,328.37797360007244,248.36741859999165,40.28,37.8,28.59,String = literal requiere .to_string() en Rust estándar
+loop_sum.rs,8.166346200050612,337.34539599990967,331.6847502002929,248.17112760010787,41.31,40.62,30.39,
