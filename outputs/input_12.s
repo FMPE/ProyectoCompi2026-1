@@ -1,24 +1,24 @@
 .data
 print_fmt: .string "%ld \n"
 print_float_fmt: .string "%f \n"
+print_str_fmt: .string "%s\n"
 .text
 .globl mayor
 mayor:
  pushq %rbp
  movq %rsp, %rbp
- subq $16, %rsp
+ subq $96, %rsp
  movq %rdi, -8(%rbp)
  movq %rsi, -16(%rbp)
- movl -8(%rbp), %eax
- pushq %rax
  movl -16(%rbp), %eax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -8(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setg %al
  movzbq %al, %rax
- cmpq $0, %rax
+ testq %rax, %rax
  je .L_else_0
  movl -8(%rbp), %eax
  jmp .L_return_mayor
@@ -35,7 +35,7 @@ mayor:
 main:
  pushq %rbp
  movq %rsp, %rbp
- subq $16, %rsp
+ subq $96, %rsp
  movq $0, -8(%rbp)
  movq $3, %rax
  movl %eax, -16(%rbp)
@@ -49,7 +49,6 @@ main:
  cltq
  movq %rax, %rsi
  leaq -8(%rbp), %rax
- addq $0, %rax
  movl (%rax), %eax
  cltq
  movq %rax, %rdi

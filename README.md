@@ -66,6 +66,3 @@ La app web incluye los 5 componentes requeridos:
 compiler archivo.txt [--no-opt] [--stats] [--emit-json]
 ```
 
-## Documentación
-
-Ver `docs/ARQUITECTURA.md` e `Informe.pdf` (actualizar con screenshots de la app y benchmarks).

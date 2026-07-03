@@ -21,11 +21,10 @@ matrix_kernel:
  movq $0, %rax
  movl %eax, -48(%rbp)
 .L_while_begin_0:
- movl -48(%rbp), %eax
- pushq %rax
  movq $3, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -48(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setl %al
@@ -35,11 +34,10 @@ matrix_kernel:
  movq $0, %rax
  movl %eax, -56(%rbp)
 .L_while_begin_2:
- movl -56(%rbp), %eax
- pushq %rax
  movq $3, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -56(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setl %al
@@ -59,11 +57,10 @@ matrix_kernel:
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  pushq %rax
- movl -48(%rbp), %eax
- pushq %rax
  movl -56(%rbp), %eax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -48(%rbp), %eax
+ popq %rcx
  addq %rcx, %rax
  popq %rdi
  movl %eax, (%rdi)
@@ -80,13 +77,13 @@ matrix_kernel:
  leaq -40(%rbp), %rax
  pushq %rax
  movq $1, %rax
- movq %rax, %rcx
+ movq $1, %rcx
  popq %rax
  imulq $12, %rcx
  addq %rcx, %rax
  pushq %rax
  movq $1, %rax
- movq %rax, %rcx
+ movq $1, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  movl (%rax), %eax

@@ -15,22 +15,20 @@ main:
  movq $0, %rax
  movl %eax, -16(%rbp)
 .L_while_begin_0:
- movl -8(%rbp), %eax
- pushq %rax
  movq $5, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -8(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setl %al
  movzbq %al, %rax
  testq %rax, %rax
  je .L_while_end_1
- movl -16(%rbp), %eax
- pushq %rax
  movl -8(%rbp), %eax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -16(%rbp), %eax
+ popq %rcx
  addq %rcx, %rax
  movl %eax, -16(%rbp)
  movl -8(%rbp), %eax

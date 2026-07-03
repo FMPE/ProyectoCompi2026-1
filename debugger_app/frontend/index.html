@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compiler Debugger</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Compiler Debugger</h1>
+        </header>
+        
+        <div class="controls">
+            <input type="file" id="fileInput">
+            <button id="compileBtn">Compile</button>
+            <button id="startBtn" disabled>Start Debug</button>
+            <button id="stepBtn" disabled>Step Into</button>
+            <button id="stopBtn" disabled>Stop</button>
+        </div>
+
+        <div class="main-content">
+            <div class="panel source-panel">
+                <h2>Assembly Code</h2>
+                <pre id="assemblyCode"></pre>
+            </div>
+            
+            <div class="panel state-panel">
+                <div class="registers">
+                    <h2>Registers</h2>
+                    <div id="registersList"></div>
+                </div>
+                <div class="stack">
+                    <h2>Stack (RSP)</h2>
+                    <div id="stackList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

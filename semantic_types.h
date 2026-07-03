@@ -11,7 +11,6 @@ using namespace std;
 
 class Type {
 public:
-    // Ampliamos el conjunto para reflejar tokens Rust simplificados
     enum TType { NOTYPE, VOID, BOOL, I32, I64, U32, U64, USIZE, F32, F64, STRING };
     static const char* type_names[11];
 

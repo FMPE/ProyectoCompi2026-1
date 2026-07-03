@@ -214,8 +214,8 @@ bool PeepholeOptimizer::constantPropagation(
     if (!isImmediate(src)) return false;
     if (dst.empty() || dst[0] != '%' || dst.find('(') != std::string::npos) return false;
 
-    const std::string reg = dst;   // p. ej. "%rax"
-    const std::string imm = src;   // p. ej. "$8"
+    const std::string reg = dst;
+    const std::string imm = src;
 
     for (size_t j = i + 1; j < instructions.size(); ++j) {
         const std::string& line = instructions[j];
@@ -238,7 +238,6 @@ bool PeepholeOptimizer::constantPropagation(
         if (!a.empty() && a.back() == ',') a.pop_back();
 
         // Sustitución: movq/movl %reg, %dst  →  movq/movl $imm, %dst
-        // (reg como fuente exacta, destino registro, sin memoria)
         if ((jop == "movq" || jop == "movl") && a == reg &&
             !b.empty() && b[0] == '%' &&
             b.find('(') == std::string::npos) {
@@ -250,14 +249,13 @@ bool PeepholeOptimizer::constantPropagation(
         if (b == reg) break;
 
         // Cualquier otra aparición de %reg (memoria, aritmética, etc.):
-        // conservador, detenerse sin sustituir.
         if (a.find(reg) != std::string::npos || b.find(reg) != std::string::npos) break;
     }
 
     return false;
 }
 
-// cmpq $0, %rax → testq %rax, %rax (más eficiente)
+// cmpq $0, %rax → testq %rax, %rax
 bool PeepholeOptimizer::optimizeZeroComparisons(
     std::vector<std::string>& instructions, size_t& i) {
 

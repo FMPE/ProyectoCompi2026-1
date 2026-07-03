@@ -9,11 +9,10 @@ fib:
  movq %rsp, %rbp
  subq $88, %rsp
  movq %rdi, -8(%rbp)
- movl -8(%rbp), %eax
- pushq %rax
  movq $1, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -8(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setle %al
@@ -48,7 +47,7 @@ main:
  movq %rsp, %rbp
  subq $88, %rsp
  movq $10, %rax
- movq %rax, %rdi
+ movq $10, %rdi
  call fib
  movl %eax, -8(%rbp)
  movl -8(%rbp), %eax

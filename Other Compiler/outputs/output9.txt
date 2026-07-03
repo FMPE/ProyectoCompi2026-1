@@ -1,6 +1,0 @@
-=== STDOUT ===
-Parser exitoso
-Generando codigo ensamblador en 'inputs/input9.s'...
-Compilación exitosa.
-
-=== STDERR ===

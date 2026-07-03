@@ -17,11 +17,9 @@ using std::vector;
 namespace {
 const vector<string> kArgRegisters = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 
-string resolve_alias(string name); // definido más abajo
+string resolve_alias(string name);
 
 Type::TType resolve_type(const string& name) {
-    // Resolver alias de tipo primero (p. ej. "MyInt" -> "i32") para que el enum
-    // se reconozca; si no, quedaría NOTYPE y el codegen usaría tamaño erróneo.
     auto tt = Type::string_to_type(resolve_alias(name));
     return tt;
 }
@@ -33,13 +31,9 @@ struct StructLayout {
 };
 static std::unordered_map<std::string, StructLayout> globalStructLayouts;
 static std::unordered_map<std::string, std::string> globalTypeAliases;
-// Binding activo de parámetros de tipo genérico (p. ej. T -> "i32") durante la
-// emisión de una instancia monomorfizada. Lo fija GenCodeVisitor::visit(Program).
 static std::unordered_map<std::string, std::string> currentTypeBindings;
 
 string resolve_alias(string name) {
-    // Sustituir primero parámetros de tipo genérico (T -> i32) y luego alias de
-    // tipo (type X = ...). Se itera hasta punto fijo.
     bool changed = true;
     while (changed) {
         changed = false;
@@ -70,8 +64,6 @@ int arrayElementCount(const string& typeName) {
 }
 
 // Un tipo puntero/referencia se representa con prefijo '&' o '*'
-// (p. ej. "&i32", "*mut Point"); '~' marca un Box<T> (propiedad en heap).
-// Todos ocupan 8 bytes en x86-64.
 inline bool isPointerType(const string& t) {
     return !t.empty() && (t[0] == '&' || t[0] == '*' || t[0] == '~');
 }
@@ -209,7 +201,6 @@ void collectFcallsFromExp(Exp* exp, vector<FcallExp*>& out) {
     }
 }
 
-// ---- Sethi-Ullman: etiquetado y pureza (para ordenar operandos) ----
 // Etiqueta SU: hojas = 1; binaria = (l==r) ? l+1 : max(l,r).
 static int suLabel(Exp* e) {
     if (!e) return 0;
@@ -242,7 +233,7 @@ static bool expIsPure(Exp* e) {
     if (AddressOfExp* ao = dynamic_cast<AddressOfExp*>(e)) return expIsPure(ao->target);
     if (DerefExp* d = dynamic_cast<DerefExp*>(e))      return expIsPure(d->ptr);
     if (ArrayRepeatExp* ar = dynamic_cast<ArrayRepeatExp*>(e)) return expIsPure(ar->value);
-    return false; // desconocido → conservador (impuro)
+    return false;
 }
 
 // Infiere el tipo concreto de un argumento literal (para inferencia de genéricos)
@@ -251,7 +242,7 @@ string inferArgTypeStatic(Exp* e) {
     if (FloatExp* f = dynamic_cast<FloatExp*>(e)) return f->isDouble ? "f64" : "f32";
     if (dynamic_cast<BoolExp*>(e)) return "bool";
     if (dynamic_cast<StringExp*>(e)) return "String";
-    return ""; // no inferible
+    return "";
 }
 
 string escapeAsmString(const string& s) {
@@ -343,12 +334,11 @@ std::string GenCodeVisitor::generateExprSignature(Exp* exp) {
             case MINUS_OP: opStr = "-"; break;
             case MUL_OP: opStr = "*"; break;
             case DIV_OP: opStr = "/"; break;
-            default: return ""; // No cachear otras operaciones
+            default: return "";
         }
         return "BIN:(" + leftSig + ")" + opStr + "(" + rightSig + ")";
     }
     
-    // No cachear otras expresiones (llamadas a funciones, arrays, etc.)
     return "";
 }
 
@@ -516,8 +506,7 @@ void GenCodeVisitor::popBoxScopeAndFree(std::ostream& targetOut) {
 }
 
 void GenCodeVisitor::emitFreeAllBoxes(std::ostream& targetOut) {
-    // Libera todos los Box vivos (de scope interno a externo) sin desapilar:
-    // se usa antes de un 'return' que salta los free textuales de los pop.
+    // Libera todos los Box vivos (de scope interno a externo)
     for (auto it = boxScopes.rbegin(); it != boxScopes.rend(); ++it) {
         for (int offset : *it) {
             targetOut << " movq " << offset << "(%rbp), %rdi\n";
@@ -548,10 +537,8 @@ void GenCodeVisitor::collectInstantiations(Program* program) {
     }
     if (genericTemplates.empty()) return;
 
-    std::unordered_map<std::string, int> seen; // nombres mangled ya registrados
+    std::unordered_map<std::string, int> seen;
 
-    // Resuelve los typeArgs concretos de una llamada a una plantilla.
-    // 'bindings' sustituye parámetros de tipo (para llamadas anidadas en plantillas).
     auto resolveCallTypeArgs = [&](FcallExp* fc, FunDec* tmpl,
                                    const std::unordered_map<std::string,std::string>& bindings)
                                    -> std::vector<std::string> {
@@ -560,7 +547,7 @@ void GenCodeVisitor::collectInstantiations(Program* program) {
             for (auto t : fc->typeArgs) {
                 auto it = bindings.find(t);
                 std::string r = (it != bindings.end()) ? it->second : t;
-                args.push_back(resolve_alias(r)); // canonicaliza alias
+                args.push_back(resolve_alias(r));
             }
         } else {
             // Inferir por posición: para cada type param, el primer parámetro
@@ -594,7 +581,7 @@ void GenCodeVisitor::collectInstantiations(Program* program) {
             auto git = genericTemplates.find(fc->nombre);
             if (git == genericTemplates.end()) continue;
             std::vector<std::string> targs = resolveCallTypeArgs(fc, git->second, {});
-            fc->typeArgs = targs; // escribe concretos para el call site
+            fc->typeArgs = targs;
             std::string mangled = mangleGeneric(fc->nombre, targs);
             if (!seen.count(mangled)) {
                 seen[mangled] = 1;
@@ -604,7 +591,6 @@ void GenCodeVisitor::collectInstantiations(Program* program) {
         }
     }
 
-    // Worklist: llamadas genéricas anidadas dentro de plantillas
     while (!work.empty()) {
         auto inst = work.back(); work.pop_back();
         FunDec* tmpl = genericTemplates[inst.first];
@@ -668,8 +654,6 @@ void GenCodeVisitor::computeLiveFunctions(Program* program) {
     };
 
     addRoot("main");
-    // Las plantillas genéricas instanciadas también son raíces vivas: pueden
-    // llamar a funciones no-genéricas desde sus cuerpos.
     for (auto& inst : instantiations) addRoot(inst.first);
 
     while (!worklist.empty()) {
@@ -1303,13 +1287,6 @@ int GenCodeVisitor::visit(BinaryExp* exp) {
         }
     }
 
-    // Código general para otras expresiones.
-    // Orden de evaluación estilo Sethi-Ullman: si ambos operandos son puros
-    // (sin efectos observables) y el derecho no es más ligero, se evalúa el
-    // derecho primero; al evaluar el izquierdo en último lugar queda ya en
-    // %rax y basta 'popq %rcx' para el derecho, ahorrando el 'movq %rax,%rcx'.
-    // Si algún operando es impuro, se conserva el orden canónico izq→der para
-    // no alterar la semántica de evaluación de Rust.
     Type::TType leftType, rightType;
     if (expIsPure(exp->left) && expIsPure(exp->right)
         && suLabel(exp->right) >= suLabel(exp->left)) {
@@ -1539,8 +1516,6 @@ int GenCodeVisitor::visit(FcallExp* exp) {
         }
     }
 
-    // Llamada genérica: destino monomorfizado (name mangling). Los typeArgs se
-    // resuelven a concretos vía resolve_alias (sustituye type-params anidados).
     std::string callTarget = exp->nombre;
     if (!exp->typeArgs.empty()) {
         std::vector<std::string> resolved;

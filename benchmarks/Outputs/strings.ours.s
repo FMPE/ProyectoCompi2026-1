@@ -14,7 +14,7 @@ main:
  movq $42, %rax
  movl %eax, -16(%rbp)
  movl -16(%rbp), %eax
- movq %rax, %rsi
+ movq $42, %rsi
  leaq print_fmt(%rip), %rdi
  movl $0, %eax
  call printf@PLT

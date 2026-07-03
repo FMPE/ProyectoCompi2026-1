@@ -16,22 +16,20 @@ fibonacci:
  movq $0, %rax
  movl %eax, -32(%rbp)
 .L_while_begin_0:
- movl -32(%rbp), %eax
- pushq %rax
  movl -8(%rbp), %eax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -32(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setl %al
  movzbq %al, %rax
  testq %rax, %rax
  je .L_while_end_1
- movl -16(%rbp), %eax
- pushq %rax
  movl -24(%rbp), %eax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -16(%rbp), %eax
+ popq %rcx
  addq %rcx, %rax
  movl %eax, -40(%rbp)
  movl -24(%rbp), %eax
@@ -57,25 +55,23 @@ main:
  movq $0, %rax
  movl %eax, -32(%rbp)
  movq $10, %rax
- movq %rax, %rdi
+ movq $10, %rdi
  call fibonacci
  movl %eax, -40(%rbp)
- movl -40(%rbp), %eax
- pushq %rax
  movq $50, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -40(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setg %al
  movzbq %al, %rax
  testq %rax, %rax
  je .L_and_false_4
- movl -40(%rbp), %eax
- pushq %rax
  movq $100, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -40(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setle %al

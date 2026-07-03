@@ -7,10 +7,6 @@
 // ============================================================================
 // Optimización Peephole (mirilla): reglas locales sobre el ensamblador ya
 // generado (post-procesamiento de una función a la vez).
-//
-// Nota: la eliminación de subexpresiones comunes (CSE) NO vive aquí; se
-// realiza a nivel de AST durante la generación de código en visitor.cpp
-// (dagCache / generateExprSignature / lookupDAGCache / saveToDAGCache).
 // ============================================================================
 
 class PeepholeOptimizer {
@@ -32,17 +28,15 @@ private:
     // Elimina código muerto: movq seguido de otro movq al mismo registro
     bool eliminateDeadCode(std::vector<std::string>& instructions, size_t& i);
 
-    // Fortalecimiento de operaciones: addq $1 -> incq, imulq $2 -> shlq $1, ...
+    // Fortalecimiento de operaciones: addq $1 -> incq, imulq $2 -> shlq $1, etc
     bool strengthReduction(std::vector<std::string>& instructions, size_t& i);
 
-    // Propagación de constantes: si un registro tiene un inmediato conocido,
-    // sustituirlo en usos posteriores como operando fuente.
+    // Propagación de constantes: si un registro tiene un inmediato conocido
     bool constantPropagation(std::vector<std::string>& instructions, size_t& i);
 
     // Optimización de comparaciones con 0: cmpq $0, %reg -> testq %reg, %reg
     bool optimizeZeroComparisons(std::vector<std::string>& instructions, size_t& i);
 
-    // Funciones auxiliares
     bool isImmediate(const std::string& operand);
     long long getImmediateValue(const std::string& operand);
 };
@@ -60,7 +54,6 @@ public:
 
     void setPeepholeOptimization(bool enable) { enablePeephole = enable; }
 
-    // Estadísticas
     struct Stats {
         int originalInstructions = 0;
         int optimizedInstructions = 0;

@@ -11,7 +11,7 @@ main:
  leaq -24(%rbp), %rax
  pushq %rax
  movq $0, %rax
- movq %rax, %rcx
+ movq $0, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  pushq %rax
@@ -21,7 +21,7 @@ main:
  leaq -24(%rbp), %rax
  pushq %rax
  movq $1, %rax
- movq %rax, %rcx
+ movq $1, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  pushq %rax
@@ -31,7 +31,7 @@ main:
  leaq -24(%rbp), %rax
  pushq %rax
  movq $2, %rax
- movq %rax, %rcx
+ movq $2, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  pushq %rax
@@ -41,7 +41,7 @@ main:
  leaq -24(%rbp), %rax
  pushq %rax
  movq $4, %rax
- movq %rax, %rcx
+ movq $4, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  pushq %rax
@@ -50,8 +50,8 @@ main:
  movl %eax, (%rdi)
  leaq -24(%rbp), %rax
  pushq %rax
- movq $0, %rax
- movq %rax, %rcx
+ movq $1, %rax
+ movq $1, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  movl (%rax), %eax
@@ -59,20 +59,19 @@ main:
  pushq %rax
  leaq -24(%rbp), %rax
  pushq %rax
- movq $1, %rax
- movq %rax, %rcx
+ movq $0, %rax
+ movq $0, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  movl (%rax), %eax
  cltq
- movq %rax, %rcx
- popq %rax
+ popq %rcx
  addq %rcx, %rax
  pushq %rax
  leaq -24(%rbp), %rax
  pushq %rax
  movq $2, %rax
- movq %rax, %rcx
+ movq $2, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  movl (%rax), %eax
@@ -89,7 +88,7 @@ main:
  leaq -24(%rbp), %rax
  pushq %rax
  movq $4, %rax
- movq %rax, %rcx
+ movq $4, %rcx
  popq %rax
  leaq (%rax, %rcx, 4), %rax
  movl (%rax), %eax

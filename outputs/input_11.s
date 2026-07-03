@@ -27,9 +27,9 @@ main:
  subq $88, %rsp
  movq $0, -8(%rbp)
  movq $9, %rax
- movq %rax, %rsi
+ movq $9, %rsi
  movq $5, %rax
- movq %rax, %rdi
+ movq $5, %rdi
  call crear
  movq %rax, -8(%rbp)
  leaq -8(%rbp), %rax

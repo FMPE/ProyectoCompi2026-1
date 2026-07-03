@@ -27,7 +27,7 @@ private:
     void parseItem(Program* p);
     FunDec* parseFunction();
     StructDec* parseStruct(); 
-    TypeAlias* parseTypeAlias(); // placeholder
+    TypeAlias* parseTypeAlias();
 
     // statements / bloques
     BlockStm* parseBlock();

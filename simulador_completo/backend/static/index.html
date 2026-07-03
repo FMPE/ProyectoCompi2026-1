@@ -189,7 +189,7 @@ function renderAST(node, depth) {
   return h;
 }
 
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function renderTokens(tokens) {
   if (!tokens || !tokens.length) return '<p style="color:#64748b">Sin tokens</p>';
@@ -205,6 +205,18 @@ function renderAsm(asm, curLine) {
   return asm.split('\n').map((l,i) =>
     `<div class="asm-line${i===curLine?' hl':''}"><span class="asm-num">${i+1}</span><span>${esc(l)}</span></div>`
   ).join('');
+}
+
+function renderProgramOutput(result) {
+  if (result.programOutput != null) {
+    return result.programOutput
+      ? esc(result.programOutput).replace(/\n/g, '<br>')
+      : '<span style="color:#475569">(el programa no imprimió nada)</span>';
+  }
+  if (result.programError) {
+    return `<span style="color:#f87171">No se pudo ejecutar el programa real: ${esc(result.programError)}</span>`;
+  }
+  return '<span style="color:#475569">...</span>';
 }
 
 function renderStats(stats) {
@@ -295,7 +307,6 @@ function updateSimUI() {
   document.getElementById('regsView').innerHTML = ['rax','rbx','rcx','rdx','rsi','rdi','rbp','rsp']
     .map(r=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#60a5fa">%${r}</span><span style="color:#fde047">${st.regs[r]}</span></div>`).join('');
   document.getElementById('curInstr').textContent = sim.lines[st.line] || '—';
-  document.getElementById('consoleOut').innerHTML = st.out.length ? st.out.map(l=>`<div>${esc(String(l))}</div>`).join('') : '<span style="color:#475569">...</span>';
   document.getElementById('asmView').innerHTML = renderAsm(result?.assembly, st.line);
   document.getElementById('simStatus').innerHTML = st.done ? '<span class="badge">Completado</span>' : '';
 }
@@ -315,6 +326,7 @@ document.getElementById('btnCompile').onclick = async () => {
       document.getElementById('astView').innerHTML = renderAST(result.ast);
       document.getElementById('asmView').innerHTML = renderAsm(result.assembly, 0);
       document.getElementById('statsView').innerHTML = renderStats(result.stats);
+      document.getElementById('consoleOut').innerHTML = renderProgramOutput(result);
       const p = parseAsm(result.assembly);
       sim.lines = p.lines; sim.lbls = p.lbls; sim.st = p.st;
       updateSimUI();
@@ -324,6 +336,7 @@ document.getElementById('btnCompile').onclick = async () => {
       showTab('output');
     }
   } catch(e) {
+    console.error(e);
     showErr('No se pudo conectar al servidor. ¿Está corriendo python server.py?');
   }
   btn.disabled = false; btn.textContent = 'Compilar';

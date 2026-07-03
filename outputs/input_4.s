@@ -10,11 +10,10 @@ suma:
  subq $96, %rsp
  movq %rdi, -8(%rbp)
  movq %rsi, -16(%rbp)
- movq -8(%rbp), %rax
- pushq %rax
  movq -16(%rbp), %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movq -8(%rbp), %rax
+ popq %rcx
  addq %rcx, %rax
  jmp .L_return_suma
  movq $0, %rax

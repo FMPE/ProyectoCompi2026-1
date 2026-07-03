@@ -3,12 +3,6 @@
 
 // ---------------------------------------------------------------------------
 // Constant folding sobre el AST.
-//
-// Estrategia: reescritura de árbol. foldExp() devuelve el nodo (posiblemente
-// nuevo) ya plegado; cada padre reasigna su puntero Exp* con el resultado.
-// Los subárboles reemplazados NO se liberan: el compilador es de ejecución
-// única y algunos nodos podrían compartirse; la fuga es inofensiva y evita
-// riesgos de doble liberación.
 // ---------------------------------------------------------------------------
 
 static Exp* foldExp(Exp* e);
@@ -32,8 +26,7 @@ static Exp* foldBinary(BinaryExp* b) {
     b->right = foldExp(b->right);
 
     const BinaryOp op = b->op;
-    // No plegar: asignación, short-circuit y potencia (esta última ni siquiera
-    // está soportada en la codegen y ambos operandos rara vez son literales).
+    // No plegar: asignación, short-circuit y potencia.
     if (op == ASSIGN_OP || op == AND_OP || op == POW_OP) return b;
 
     // int op int

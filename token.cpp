@@ -104,5 +104,5 @@ ostream& operator<<(ostream& outs, const Token& tok) {
 // Para Token puntero
 ostream& operator<<(ostream& outs, const Token* tok) {
     if (!tok) return outs << "TOKEN(NULL)";
-    return outs << *tok;  // delega al otro
+    return outs << *tok;
 }

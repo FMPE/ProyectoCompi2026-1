@@ -26,7 +26,7 @@ enum BinaryOp {
     EQ_OP,
     NEQ_OP,
     AND_OP,
-    ASSIGN_OP // Added for assignment expressions
+    ASSIGN_OP 
 };
 
 // ============================================================
@@ -87,7 +87,7 @@ class FcallExp : public Exp {
 public:
     string nombre;
     list<Exp*> argumentos;
-    vector<string> typeArgs; // argumentos de tipo genérico (turbofish/inferidos); vacío = no genérica
+    vector<string> typeArgs; 
 
     FcallExp(){};
     ~FcallExp(){};
@@ -247,7 +247,7 @@ public:
     string nombre;
     vector<string> Tparametros;
     vector<string> Nparametros;
-    vector<string> typeParams; // parámetros de tipo genérico (p. ej. ["T"]); vacío = no genérica
+    vector<string> typeParams; // parámetros de tipo genérico
     Body* cuerpo;
 
     FunDec() {};
@@ -279,8 +279,8 @@ class Program {
 public:
     list<FunDec*> fdlist;
     list<VarDec*> vdlist;
-    list<StructDec*> sdlist; // Added struct list
-    list<TypeAlias*> talist; // Added type alias list
+    list<StructDec*> sdlist;
+    list<TypeAlias*> talist;
 
     Program();
     ~Program();
@@ -303,7 +303,7 @@ public:
 };
 
 // ============================================================
-// Literal de arreglo repetido: [ valor ; N ]  (anidable)
+// Literal de arreglo repetido
 // ============================================================
 class ArrayRepeatExp : public Exp {
 public:
@@ -317,7 +317,7 @@ public:
 };
 
 // ============================================================
-// Conversión de tipo: expr as Tipo  (p. ej. i as usize)
+// Conversión de tipo: expr as Tipo
 // ============================================================
 class CastExp : public Exp {
 public:
@@ -419,7 +419,7 @@ public:
 class BoxNewExp : public Exp {
 public:
     Exp* value;
-    string valueType; // tipo apuntado (p. ej. "i32"), para tamaño de malloc
+    string valueType; // tipo apuntado, para tamaño de malloc
 
     BoxNewExp(Exp* v, const string& t);
     ~BoxNewExp();

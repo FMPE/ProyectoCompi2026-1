@@ -2,10 +2,10 @@
 
 | Programa | Nuestro (ms) | Rustc/LLVM (ms) | Rustc/Cranelift (ms) | GCC (ms) | Ratio rustc/ours | Ratio clif/ours | Ratio gcc/ours |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| fibonacci.rs | 9.52116760017816 | 364.02824420001707 | 338.8326418000361 | 278.78409279965126 | 38.23 | 35.59 | 29.28 |
-| matrix.rs | 8.682146399951307 | 347.6914102000592 | 329.9343881999448 | 249.49316760012152 | 40.05 | 38.0 | 28.74 |
-| strings.rs | 8.687469599863107 | 349.9281857999449 | 328.37797360007244 | 248.36741859999165 | 40.28 | 37.8 | 28.59 |
-| loop_sum.rs | 8.166346200050612 | 337.34539599990967 | 331.6847502002929 | 248.17112760010787 | 41.31 | 40.62 | 30.39 |
+| fibonacci.rs | 10.405179400004272 | 509.47426979996635 | 530.6633675999819 | 294.02561540000534 | 48.96 | 51.0 | 28.26 |
+| matrix.rs | 13.208693399997173 | 433.20703799997773 | 397.90259859996695 | 254.62040120000896 | 32.8 | 30.12 | 19.28 |
+| strings.rs | 12.55199839999932 | 430.6539304000353 | 383.1090866000068 | 252.24586580000053 | 34.31 | 30.52 | 20.1 |
+| loop_sum.rs | 10.858235000000604 | 425.4339025999798 | 432.058219999999 | 269.39180540000507 | 39.18 | 39.79 | 24.81 |
 
 *Menor tiempo = mejor. Ratio > 1 indica que nuestro compilador es más rápido.*
 
@@ -15,9 +15,9 @@
 
 | Programa (función) | Nuestro | Rustc/LLVM (-O2) | Rustc/Cranelift | GCC (-O2) |
 |---|---:|---:|---:|---:|
-| fibonacci (`fib`) | 34 / 63 | 24 / 50 | 31 / 36 | 304 / 390 |
-| matrix (`matrix_kernel`) | 86 / 113 | 2 / 15 | 59 / 64 | 3 / 32 |
-| loop_sum (`loop_sum_kernel`) | 28 / 53 | 2 / 15 | 21 / 26 | 3 / 32 |
+| fibonacci (`fib`) | 33 / 62 | 24 / 50 | 31 / 36 | 304 / 390 |
+| matrix (`matrix_kernel`) | 83 / 110 | 2 / 15 | 59 / 64 | 3 / 32 |
+| loop_sum (`loop_sum_kernel`) | 27 / 52 | 2 / 15 | 21 / 26 | 3 / 32 |
 
 *Cada celda = **instrucciones de la función** / **líneas totales del `.s`**.* Las tres columnas comerciales usan **variantes puras** (`extern "C"` en Rust / función C, sin `main` ni `println!`/`printf`, `-O2`), por eso son comparables con nuestro output ya limpio. `strings` se omite por ser solo I/O.
 

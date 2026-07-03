@@ -46,7 +46,7 @@ bool Parser::matchTypeToken() {
 string Parser::parseTypeName() {
     // Tipos referencia/puntero:  &T, &mut T, *const T, *mut T
     if (match(Token::AMP)) {
-        match(Token::MUT); // opcional; no afecta la representación interna
+        match(Token::MUT);
         return "&" + parseTypeName();
     }
     if (match(Token::MUL)) {
@@ -81,12 +81,10 @@ string Parser::inferTypeFromExp(Exp* e) {
     if (StructInitExp* s = dynamic_cast<StructInitExp*>(e)) return s->name;
     if (CastExp* c = dynamic_cast<CastExp*>(e)) return c->targetType;
     if (AddressOfExp* a = dynamic_cast<AddressOfExp*>(e)) {
-        // El tipo apuntado se resuelve en codegen; basta un puntero de 8 bytes.
         try { return "&" + inferTypeFromExp(a->target); }
         catch (...) { return "&i64"; }
     }
     if (dynamic_cast<DerefExp*>(e)) {
-        // Tamaño real (tipo apuntado) resuelto en codegen; slot de 8 bytes.
         return "i64";
     }
     if (BoxNewExp* b = dynamic_cast<BoxNewExp*>(e)) {
@@ -104,8 +102,6 @@ string Parser::inferTypeFromExp(Exp* e) {
             "'; anote el tipo del let");
     }
     if (ArrayRepeatExp* a = dynamic_cast<ArrayRepeatExp*>(e)) {
-        // Inserta [count] justo tras el tipo base, manteniendo el formato interno
-        // "base[d0][d1]" donde la cuenta más externa es la primera dimensión.
         string inner = inferTypeFromExp(a->value);   // "i32" o "i32[3]"
         string sz = "[" + to_string(a->count) + "]";
         size_t br = inner.find('[');
@@ -126,7 +122,6 @@ Program* Parser::parseProgram(bool silent){
 
 void Parser::parseItems(Program* p){
     while(!isAtEnd()){
-        // Mirar posibles comienzos de Item
         if (check(Token::FN)){
             p->fdlist.push_back(parseFunction());
         } else if (check(Token::STRUCT)) {
@@ -168,14 +163,12 @@ FunDec* Parser::parseFunction(){
         } while (match(Token::COMMA));
     }
     consume(Token::RPAREN, "')'");
-    // Retorno opcional -> Type
     string retType = "void";
     if (match(Token::ARROW)){
         retType = parseTypeName();
     }
     // Block
     BlockStm* bodyBlock = parseBlock();
-    // Construir FunDec con cuerpo real
     FunDec* fd = new FunDec();
     fd->nombre = nombre;
     fd->tipo = retType;
@@ -237,8 +230,7 @@ Stm* Parser::parseStatement(){
     if (check(Token::LBRACE)) return parseBlock();
     // ExpressionStmt
     Exp* e = parseExpression();
-    if (match(Token::SEMICOL)) return new AssignStm("_", e); // placeholder simple
-    // Permitir expresión final de bloque como retorno implícito
+    if (match(Token::SEMICOL)) return new AssignStm("_", e);
     if (check(Token::RBRACE)) {
         ReturnStm* r = new ReturnStm();
         r->e = e;
@@ -277,7 +269,7 @@ IfStm* Parser::parseIf(){
         cond = parseExpression(); consume(Token::RPAREN, ") en if");
     } else {
         bool prev = noStructLit; noStructLit = true;
-        cond = parseExpression(); // forma sin paréntesis
+        cond = parseExpression();
         noStructLit = prev;
     }
     BlockStm* thenB = parseBlock();
@@ -332,7 +324,6 @@ PrintStm* Parser::parsePrint(){
     if (match(Token::COMMA)) {
         // lista de expresiones
         firstExpr = parseExpression();
-        // si hay múltiples expresiones, por ahora ignoramos las adicionales
         while(match(Token::COMMA)) { Exp* e2 = parseExpression(); (void)e2; }
     }
     consume(Token::RPAREN, ") en println");
@@ -440,7 +431,7 @@ Exp* Parser::parseUnary(){
         bool isMut = match(Token::MUT);
         return new AddressOfExp(parseUnary(), isMut);
     }
-    if (match(Token::MUL)) {                       // *expr (desreferencia)
+    if (match(Token::MUL)) {                       // *expr (derreferencia)
         return new DerefExp(parseUnary());
     }
     if (match(Token::NOT) || match(Token::MINUS) || match(Token::PLUS)) { Exp* right = parseUnary(); return right; }
@@ -594,8 +585,6 @@ Exp* Parser::parsePrimary(){
         Exp* v = parseExpression();
         noStructLit = prev;
         consume(Token::RPAREN, "')' en Box::new");
-        // El tipo real (y tamaño) se resuelve en codegen a partir del valor
-        // evaluado; aquí sólo se necesita un placeholder de 8 bytes.
         string vt;
         try { vt = inferTypeFromExp(v); } catch (...) { vt = "i32"; }
         return new BoxNewExp(v, vt);
@@ -612,7 +601,7 @@ Exp* Parser::parsePrimary(){
         return e;
     }
     if (match(Token::LBRACKET)) {
-        // Literal de arreglo repetido: [ valor ; N ]  (anidable)
+        // Literal de arreglo repetido: [ valor ; N ]
         bool prev = noStructLit; noStructLit = false;
         Exp* value = parseExpression();
         noStructLit = prev;

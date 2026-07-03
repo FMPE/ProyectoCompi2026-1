@@ -104,8 +104,6 @@ Token* Scanner::nextToken() {
     }
 
     // Multi-character operadores y símbolos
-    // Orden importa (más largos primero)
-    // ..
     if (c == '.' && peek(1) == '.') {
         current += 2;
         return new Token(Token::DOTDOT, "..", 0, 2);
@@ -165,7 +163,6 @@ Scanner::~Scanner() { }
 void ejecutar_scanner(Scanner* scanner, const string& InputFile) {
     Token* tok;
 
-    // Crear nombre para archivo de salida
     string OutputFileName = InputFile;
     size_t pos = OutputFileName.find_last_of(".");
     if (pos != string::npos) {

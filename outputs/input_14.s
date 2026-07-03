@@ -1,28 +1,28 @@
 .data
 print_fmt: .string "%ld \n"
 print_float_fmt: .string "%f \n"
+print_str_fmt: .string "%s\n"
 .text
 .globl main
 main:
  pushq %rbp
  movq %rsp, %rbp
- subq $16, %rsp
+ subq $96, %rsp
  movq $0, -8(%rbp)
  movq $0, -16(%rbp)
  movq $12, %rax
  movl %eax, -8(%rbp)
  movq $7, %rax
  movl %eax, -16(%rbp)
- movl -8(%rbp), %eax
- pushq %rax
  movl -16(%rbp), %eax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -8(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setg %al
  movzbq %al, %rax
- cmpq $0, %rax
+ testq %rax, %rax
  je .L_else_0
  movl -8(%rbp), %eax
  movq %rax, %rsi

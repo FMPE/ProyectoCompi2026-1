@@ -27,7 +27,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 binary = "a.exe" if os.name == "nt" else "./a.out"
 
-for i in range(1, 22):
+for i in range(1, 27):
     filename = f"input{i}.txt"
     filepath = os.path.join(input_dir, filename)
 
