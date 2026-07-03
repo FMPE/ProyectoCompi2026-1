@@ -1,0 +1,19 @@
+fn max<T>(a: T, b: T) -> T {
+    if (a > b) { return a; }
+    return b;
+}
+
+fn add<T>(a: T, b: T) -> T {
+    return a + b;
+}
+
+fn main() {
+    let x = max::<i32>(3, 7);
+    let y = max(100, 50);
+    let z = max::<i64>(1000000, 2000000);
+    let s = add::<i32>(10, 20);
+    println("x (max i32): ", x);
+    println("y (max inferido): ", y);
+    println("z (max i64): ", z);
+    println("s (add i32): ", s);
+}

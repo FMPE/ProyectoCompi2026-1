@@ -32,10 +32,26 @@ struct StructLayout {
 };
 static std::unordered_map<std::string, StructLayout> globalStructLayouts;
 static std::unordered_map<std::string, std::string> globalTypeAliases;
+// Binding activo de parámetros de tipo genérico (p. ej. T -> "i32") durante la
+// emisión de una instancia monomorfizada. Lo fija GenCodeVisitor::visit(Program).
+static std::unordered_map<std::string, std::string> currentTypeBindings;
 
 string resolve_alias(string name) {
-    while (globalTypeAliases.count(name)) {
-        name = globalTypeAliases[name];
+    // Sustituir primero parámetros de tipo genérico (T -> i32) y luego alias de
+    // tipo (type X = ...). Se itera hasta punto fijo.
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        auto bit = currentTypeBindings.find(name);
+        if (bit != currentTypeBindings.end() && bit->second != name) {
+            name = bit->second;
+            changed = true;
+        }
+        auto ait = globalTypeAliases.find(name);
+        if (ait != globalTypeAliases.end() && ait->second != name) {
+            name = ait->second;
+            changed = true;
+        }
     }
     return name;
 }
@@ -135,6 +151,68 @@ void collectStringLiterals(Program* program, std::unordered_map<string, string>&
             }
         }
     }
+}
+
+// ---- Recolección de llamadas (para monomorfización de genéricos) ----
+void collectFcallsFromExp(Exp* exp, vector<FcallExp*>& out);
+
+void collectFcallsFromStm(Stm* stm, vector<FcallExp*>& out) {
+    if (!stm) return;
+    if (LetStm* l = dynamic_cast<LetStm*>(stm)) collectFcallsFromExp(l->init, out);
+    else if (PrintStm* p = dynamic_cast<PrintStm*>(stm)) collectFcallsFromExp(p->e, out);
+    else if (AssignStm* a = dynamic_cast<AssignStm*>(stm)) collectFcallsFromExp(a->e, out);
+    else if (ReturnStm* r = dynamic_cast<ReturnStm*>(stm)) collectFcallsFromExp(r->e, out);
+    else if (IfStm* i = dynamic_cast<IfStm*>(stm)) {
+        collectFcallsFromExp(i->condition, out);
+        if (i->thenBlock) for (auto s : i->thenBlock->statements) collectFcallsFromStm(s, out);
+        if (i->elseBlock) for (auto s : i->elseBlock->statements) collectFcallsFromStm(s, out);
+    } else if (WhileStm* w = dynamic_cast<WhileStm*>(stm)) {
+        collectFcallsFromExp(w->condition, out);
+        if (w->body) for (auto s : w->body->statements) collectFcallsFromStm(s, out);
+    } else if (ForStm* f = dynamic_cast<ForStm*>(stm)) {
+        collectFcallsFromExp(f->start, out);
+        collectFcallsFromExp(f->end, out);
+        if (f->body) for (auto s : f->body->statements) collectFcallsFromStm(s, out);
+    } else if (BlockStm* b = dynamic_cast<BlockStm*>(stm)) {
+        for (auto s : b->statements) collectFcallsFromStm(s, out);
+    }
+}
+
+void collectFcallsFromExp(Exp* exp, vector<FcallExp*>& out) {
+    if (!exp) return;
+    if (FcallExp* fc = dynamic_cast<FcallExp*>(exp)) {
+        out.push_back(fc);
+        for (auto a : fc->argumentos) collectFcallsFromExp(a, out);
+        return;
+    }
+    if (BinaryExp* b = dynamic_cast<BinaryExp*>(exp)) {
+        collectFcallsFromExp(b->left, out); collectFcallsFromExp(b->right, out);
+    } else if (ArrayAccessExp* a = dynamic_cast<ArrayAccessExp*>(exp)) {
+        collectFcallsFromExp(a->array, out); collectFcallsFromExp(a->index, out);
+    } else if (FieldAccessExp* f = dynamic_cast<FieldAccessExp*>(exp)) {
+        collectFcallsFromExp(f->object, out);
+    } else if (CastExp* c = dynamic_cast<CastExp*>(exp)) {
+        collectFcallsFromExp(c->value, out);
+    } else if (AddressOfExp* ao = dynamic_cast<AddressOfExp*>(exp)) {
+        collectFcallsFromExp(ao->target, out);
+    } else if (DerefExp* d = dynamic_cast<DerefExp*>(exp)) {
+        collectFcallsFromExp(d->ptr, out);
+    } else if (BoxNewExp* bn = dynamic_cast<BoxNewExp*>(exp)) {
+        collectFcallsFromExp(bn->value, out);
+    } else if (ArrayRepeatExp* ar = dynamic_cast<ArrayRepeatExp*>(exp)) {
+        collectFcallsFromExp(ar->value, out);
+    } else if (StructInitExp* si = dynamic_cast<StructInitExp*>(exp)) {
+        for (auto& fld : si->fields) collectFcallsFromExp(fld.second, out);
+    }
+}
+
+// Infiere el tipo concreto de un argumento literal (para inferencia de genéricos)
+string inferArgTypeStatic(Exp* e) {
+    if (dynamic_cast<NumberExp*>(e)) return "i32";
+    if (FloatExp* f = dynamic_cast<FloatExp*>(e)) return f->isDouble ? "f64" : "f32";
+    if (dynamic_cast<BoolExp*>(e)) return "bool";
+    if (dynamic_cast<StringExp*>(e)) return "String";
+    return ""; // no inferible
 }
 
 string escapeAsmString(const string& s) {
@@ -410,6 +488,108 @@ void GenCodeVisitor::emitFreeAllBoxes(std::ostream& targetOut) {
 }
 
 // -----------------------------------------------------------------------------
+// Genéricos: monomorfización
+// -----------------------------------------------------------------------------
+
+std::string GenCodeVisitor::mangleGeneric(const std::string& base,
+                                          const std::vector<std::string>& typeArgs) const {
+    std::string s = base;
+    for (const auto& t : typeArgs) {
+        s += "__";
+        for (char c : t) s += (std::isalnum((unsigned char)c) || c == '_') ? c : '_';
+    }
+    return s;
+}
+
+void GenCodeVisitor::collectInstantiations(Program* program) {
+    genericTemplates.clear();
+    instantiations.clear();
+    for (auto fn : program->fdlist) {
+        if (fn && !fn->typeParams.empty()) genericTemplates[fn->nombre] = fn;
+    }
+    if (genericTemplates.empty()) return;
+
+    std::unordered_map<std::string, int> seen; // nombres mangled ya registrados
+
+    // Resuelve los typeArgs concretos de una llamada a una plantilla.
+    // 'bindings' sustituye parámetros de tipo (para llamadas anidadas en plantillas).
+    auto resolveCallTypeArgs = [&](FcallExp* fc, FunDec* tmpl,
+                                   const std::unordered_map<std::string,std::string>& bindings)
+                                   -> std::vector<std::string> {
+        std::vector<std::string> args;
+        if (!fc->typeArgs.empty()) {
+            for (auto t : fc->typeArgs) {
+                auto it = bindings.find(t);
+                std::string r = (it != bindings.end()) ? it->second : t;
+                args.push_back(resolve_alias(r)); // canonicaliza alias
+            }
+        } else {
+            // Inferir por posición: para cada type param, el primer parámetro
+            // cuyo tipo declarado sea exactamente ese T.
+            std::vector<Exp*> argv(fc->argumentos.begin(), fc->argumentos.end());
+            for (auto& tp : tmpl->typeParams) {
+                std::string concrete;
+                for (size_t pi = 0; pi < tmpl->Tparametros.size(); ++pi) {
+                    if (tmpl->Tparametros[pi] == tp && pi < argv.size()) {
+                        concrete = inferArgTypeStatic(argv[pi]);
+                        break;
+                    }
+                }
+                if (concrete.empty())
+                    throw std::runtime_error("No se puede inferir el tipo genérico de '" +
+                        fc->nombre + "'; use turbofish ::<T>");
+                args.push_back(resolve_alias(concrete));
+            }
+        }
+        return args;
+    };
+
+    std::vector<std::pair<std::string, std::vector<std::string>>> work;
+
+    // Semilla: llamadas dentro de funciones NO genéricas
+    for (auto fn : program->fdlist) {
+        if (!fn || !fn->typeParams.empty() || !fn->cuerpo) continue;
+        std::vector<FcallExp*> calls;
+        for (auto s : fn->cuerpo->stmlist) collectFcallsFromStm(s, calls);
+        for (auto fc : calls) {
+            auto git = genericTemplates.find(fc->nombre);
+            if (git == genericTemplates.end()) continue;
+            std::vector<std::string> targs = resolveCallTypeArgs(fc, git->second, {});
+            fc->typeArgs = targs; // escribe concretos para el call site
+            std::string mangled = mangleGeneric(fc->nombre, targs);
+            if (!seen.count(mangled)) {
+                seen[mangled] = 1;
+                work.push_back({fc->nombre, targs});
+                instantiations.push_back({fc->nombre, targs});
+            }
+        }
+    }
+
+    // Worklist: llamadas genéricas anidadas dentro de plantillas
+    while (!work.empty()) {
+        auto inst = work.back(); work.pop_back();
+        FunDec* tmpl = genericTemplates[inst.first];
+        if (!tmpl || !tmpl->cuerpo) continue;
+        std::unordered_map<std::string,std::string> bindings;
+        for (size_t i = 0; i < tmpl->typeParams.size() && i < inst.second.size(); ++i)
+            bindings[tmpl->typeParams[i]] = inst.second[i];
+        std::vector<FcallExp*> calls;
+        for (auto s : tmpl->cuerpo->stmlist) collectFcallsFromStm(s, calls);
+        for (auto fc : calls) {
+            auto git = genericTemplates.find(fc->nombre);
+            if (git == genericTemplates.end()) continue;
+            std::vector<std::string> targs = resolveCallTypeArgs(fc, git->second, bindings);
+            std::string mangled = mangleGeneric(fc->nombre, targs);
+            if (!seen.count(mangled)) {
+                seen[mangled] = 1;
+                work.push_back({fc->nombre, targs});
+                instantiations.push_back({fc->nombre, targs});
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
 // GenCodeVisitor
 // -----------------------------------------------------------------------------
 
@@ -418,6 +598,7 @@ int GenCodeVisitor::generar(Program* program) {
     typeChecker.analyze(program);
     frameReservation = typeChecker.frameSlots;
     prepareStringLiterals(program);
+    collectInstantiations(program);
     return program->accept(this);
 }
 
@@ -454,10 +635,25 @@ int GenCodeVisitor::visit(Program* program) {
         }
     }
 
+    // Funciones normales (las plantillas genéricas se emiten monomorfizadas abajo)
     for (auto functionDecl : program->fdlist) {
-        if (functionDecl) {
+        if (functionDecl && functionDecl->typeParams.empty()) {
             functionDecl->accept(this);
         }
+    }
+
+    // Instancias monomorfizadas de funciones genéricas
+    for (auto& inst : instantiations) {
+        auto it = genericTemplates.find(inst.first);
+        if (it == genericTemplates.end()) continue;
+        FunDec* tmpl = it->second;
+        currentTypeBindings.clear();
+        for (size_t i = 0; i < tmpl->typeParams.size() && i < inst.second.size(); ++i)
+            currentTypeBindings[tmpl->typeParams[i]] = inst.second[i];
+        currentMonoLabel = mangleGeneric(inst.first, inst.second);
+        tmpl->accept(this);
+        currentMonoLabel.clear();
+        currentTypeBindings.clear();
     }
 
     out << ".section .note.GNU-stack,\"\",@progbits\n";
@@ -470,16 +666,20 @@ int GenCodeVisitor::visit(FunDec* function) {
     symbols.push_scope();
     boxScopes.clear();
     pushBoxScope();
+    lambdas.clear();
+    expandingLambdas.clear();
     nextStackOffset = -8;
 
     // Limpiar cache DAG al inicio de cada función
     clearDAGCache();
 
-    currentFunctionName = function->nombre;
-    currentReturnLabel = ".L_return_" + function->nombre;
+    // Nombre a emitir: mangled si estamos generando una instancia genérica.
+    std::string emitName = currentMonoLabel.empty() ? function->nombre : currentMonoLabel;
+    currentFunctionName = emitName;
+    currentReturnLabel = ".L_return_" + emitName;
 
-    out << ".globl " << function->nombre << "\n";
-    out << function->nombre << ":\n";
+    out << ".globl " << emitName << "\n";
+    out << emitName << ":\n";
     out << " pushq %rbp\n";
     out << " movq %rsp, %rbp\n";
 
@@ -557,6 +757,22 @@ int GenCodeVisitor::visit(BlockStm* block) {
 
 int GenCodeVisitor::visit(LetStm* letStmt) {
     std::ostream& targetOut = bufferingOutput ? tempOutput : out;
+
+    // Lambda: registrar (sin almacenamiento). Se reservan slots fijos para los
+    // parámetros; su cuerpo se expandirá en línea en cada llamada.
+    if (LambdaExp* lam = dynamic_cast<LambdaExp*>(letStmt->init)) {
+        LambdaInfo info;
+        info.body = lam->body;
+        for (auto& p : lam->params) {
+            info.paramNames.push_back(p.first);
+            info.paramTypes.push_back(p.second);
+            int off = nextStackOffset;
+            nextStackOffset -= 8;
+            info.paramOffsets.push_back(off);
+        }
+        lambdas[letStmt->name] = info;
+        return 0;
+    }
 
     if (!insideFunction) {
         if (globalSymbols.find(letStmt->name) == globalSymbols.end()) {
@@ -1160,6 +1376,45 @@ int GenCodeVisitor::visit(IdExp* exp) {
 
 int GenCodeVisitor::visit(FcallExp* exp) {
     std::ostream& targetOut = bufferingOutput ? tempOutput : out;
+
+    // Llamada a lambda: expansión en línea (resuelta en tiempo de compilación).
+    auto lit = lambdas.find(exp->nombre);
+    if (lit != lambdas.end()) {
+        LambdaInfo info = lit->second; // copia (los offsets son fijos)
+        if (expandingLambdas.count(exp->nombre)) {
+            throw std::runtime_error("Lambda recursiva no soportada: " + exp->nombre);
+        }
+        expandingLambdas.insert(exp->nombre);
+
+        vector<Exp*> largs(exp->argumentos.begin(), exp->argumentos.end());
+        // Evaluar y guardar cada argumento en el slot del parámetro
+        for (size_t i = 0; i < info.paramOffsets.size() && i < largs.size(); ++i) {
+            largs[i]->accept(this);
+            int psize = typeSizeBytes(info.paramTypes[i]);
+            if (psize <= 4) {
+                targetOut << " movl %eax, " << info.paramOffsets[i] << "(%rbp)\n";
+            } else {
+                targetOut << " movq %rax, " << info.paramOffsets[i] << "(%rbp)\n";
+            }
+        }
+        // Declarar los parámetros en un scope temporal y evaluar el cuerpo
+        symbols.push_scope();
+        for (size_t i = 0; i < info.paramNames.size(); ++i) {
+            SymbolInfo s;
+            s.offset = info.paramOffsets[i];
+            s.type = resolve_type(info.paramTypes[i]);
+            s.typeName = info.paramTypes[i];
+            s.isMutable = true;
+            s.initialized = true;
+            symbols.declare(info.paramNames[i], s);
+        }
+        if (info.body) info.body->accept(this); // resultado en %rax, fija lastType
+        symbols.pop_scope();
+
+        expandingLambdas.erase(exp->nombre);
+        return 0;
+    }
+
     vector<Exp*> args(exp->argumentos.begin(), exp->argumentos.end());
     std::size_t totalArgs = args.size();
     std::size_t stackArgs = totalArgs > kArgRegisters.size() ? totalArgs - kArgRegisters.size() : 0;
@@ -1185,7 +1440,15 @@ int GenCodeVisitor::visit(FcallExp* exp) {
         }
     }
 
-    targetOut << " call " << exp->nombre << "\n";
+    // Llamada genérica: destino monomorfizado (name mangling). Los typeArgs se
+    // resuelven a concretos vía resolve_alias (sustituye type-params anidados).
+    std::string callTarget = exp->nombre;
+    if (!exp->typeArgs.empty()) {
+        std::vector<std::string> resolved;
+        for (auto& t : exp->typeArgs) resolved.push_back(resolve_alias(t));
+        callTarget = mangleGeneric(exp->nombre, resolved);
+    }
+    targetOut << " call " << callTarget << "\n";
 
     if (stackAdjust > 0) {
         targetOut << " addq $" << stackAdjust << ", %rsp\n";
@@ -1344,6 +1607,13 @@ int GenCodeVisitor::visit(BoxNewExp* exp) {
     return 0;
 }
 
+int GenCodeVisitor::visit(LambdaExp* exp) {
+    (void)exp;
+    // Las lambdas se registran en visit(LetStm) y se expanden en visit(FcallExp);
+    // no deberían evaluarse como valor en ningún otro contexto (alcance acotado).
+    throw std::runtime_error("Una lambda solo se soporta como inicializador de 'let' e invocada por su nombre");
+}
+
 int GenCodeVisitor::visit(FieldAccessExp* exp) {
     std::ostream& targetOut = bufferingOutput ? tempOutput : out;
     if (IdExp* id = dynamic_cast<IdExp*>(exp->object)) {
@@ -1480,6 +1750,11 @@ int TypeCheckerVisitor::visit(BlockStm* block) {
 }
 
 int TypeCheckerVisitor::visit(LetStm* letStmt) {
+    // Lambda: reservar un slot por parámetro (no hay almacenamiento del binding).
+    if (LambdaExp* lam = dynamic_cast<LambdaExp*>(letStmt->init)) {
+        currentSlotCount += static_cast<int>(lam->params.size());
+        return 0;
+    }
     int sizeBytes = typeSizeBytes(letStmt->type_name);
     int slots = (sizeBytes + 7) / 8;
     currentSlotCount += slots;
@@ -1595,6 +1870,10 @@ int TypeCheckerVisitor::visit(DerefExp* exp) {
 }
 int TypeCheckerVisitor::visit(BoxNewExp* exp) {
     if (exp->value) exp->value->accept(this);
+    return 0;
+}
+int TypeCheckerVisitor::visit(LambdaExp* exp) {
+    if (exp->body) exp->body->accept(this);
     return 0;
 }
 int TypeCheckerVisitor::visit(FieldAccessExp*) { return 0; }

@@ -1,0 +1,14 @@
+fn main() {
+    let base: i32 = 10;
+    let addBase = |x: i32| x + base;
+    let inc = |x| x + 1;
+    let k = || 7;
+    let a: i32 = addBase(5);
+    let b: i32 = inc(41);
+    let c: i32 = k();
+    let d: i32 = addBase(a);
+    println("addBase(5): ", a);
+    println("inc(41): ", b);
+    println("k(): ", c);
+    println("addBase(a): ", d);
+}

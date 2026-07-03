@@ -145,6 +145,7 @@ Token* Scanner::nextToken() {
         case '>': return new Token(Token::GT, ">", 0, 1);
         case '!': return new Token(Token::NOT, "!", 0, 1);
         case '&': return new Token(Token::AMP, "&", 0, 1);
+        case '|': return new Token(Token::PIPE, "|", 0, 1);
         default: return new Token(Token::ERR, c);
     }
 }

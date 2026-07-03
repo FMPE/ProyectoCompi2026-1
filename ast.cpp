@@ -146,3 +146,8 @@ int DerefExp::accept(Visitor* visitor) { return visitor->visit(this); }
 BoxNewExp::BoxNewExp(Exp* v, const string& t) : value(v), valueType(t) {}
 BoxNewExp::~BoxNewExp() { delete value; }
 int BoxNewExp::accept(Visitor* visitor) { return visitor->visit(this); }
+
+// ------------------ LambdaExp ------------------
+LambdaExp::LambdaExp(Exp* b) : body(b) {}
+LambdaExp::~LambdaExp() { delete body; }
+int LambdaExp::accept(Visitor* visitor) { return visitor->visit(this); }

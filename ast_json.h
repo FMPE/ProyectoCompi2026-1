@@ -40,6 +40,7 @@ public:
     int visit(AddressOfExp* exp) override;
     int visit(DerefExp* exp) override;
     int visit(BoxNewExp* exp) override;
+    int visit(LambdaExp* exp) override;
 
 private:
     std::ostringstream json;

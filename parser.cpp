@@ -92,6 +92,17 @@ string Parser::inferTypeFromExp(Exp* e) {
     if (BoxNewExp* b = dynamic_cast<BoxNewExp*>(e)) {
         return "~" + b->valueType; // puntero heap, 8 bytes
     }
+    if (dynamic_cast<LambdaExp*>(e)) {
+        return "lambda"; // centinela; el codegen detecta el nodo, no usa este tipo
+    }
+    if (FcallExp* fc = dynamic_cast<FcallExp*>(e)) {
+        // Heurística para funciones genéricas que retornan su parámetro de tipo:
+        // turbofish -> primer typeArg; si no, se infiere del primer argumento.
+        if (!fc->typeArgs.empty()) return fc->typeArgs.front();
+        if (!fc->argumentos.empty()) return inferTypeFromExp(fc->argumentos.front());
+        throw runtime_error("No se puede inferir el tipo del retorno de '" + fc->nombre +
+            "'; anote el tipo del let");
+    }
     if (ArrayRepeatExp* a = dynamic_cast<ArrayRepeatExp*>(e)) {
         // Inserta [count] justo tras el tipo base, manteniendo el formato interno
         // "base[d0][d1]" donde la cuenta más externa es la primera dimensión.
@@ -132,6 +143,15 @@ FunDec* Parser::parseFunction(){
     consume(Token::FN, "'fn'");
     consume(Token::IDENTIFIER, "nombre de función");
     string nombre = previous->text;
+    // Parámetros de tipo genéricos: fn nombre<T, U>(...)
+    vector<string> typeParams;
+    if (match(Token::LT)) {
+        do {
+            consume(Token::IDENTIFIER, "nombre de parámetro de tipo");
+            typeParams.push_back(previous->text);
+        } while (match(Token::COMMA));
+        consume(Token::GT, "'>' en lista de parámetros de tipo");
+    }
     consume(Token::LPAREN, "'('");
     // ParamListOpt
     vector<string> paramN;
@@ -161,6 +181,7 @@ FunDec* Parser::parseFunction(){
     fd->tipo = retType;
     fd->Nparametros = paramN;
     fd->Tparametros = paramT;
+    fd->typeParams = typeParams;
     fd->cuerpo = new Body();
     fd->cuerpo->stmlist.push_back(bodyBlock);
     return fd;
@@ -442,6 +463,33 @@ Exp* Parser::parsePostfix(){
             primary = new ArrayAccessExp(primary, index);
             continue;
         }
+        // Turbofish: nombre::<T, ...>(args)
+        if (check(Token::COLONCOLON)) {
+            IdExp* id = dynamic_cast<IdExp*>(primary);
+            if (!id) throw runtime_error("Turbofish requiere identificador de función");
+            string funcName = id->value;
+            advance(); // ::
+            consume(Token::LT, "'<' en turbofish");
+            vector<string> typeArgs;
+            do {
+                typeArgs.push_back(parseTypeName());
+            } while (match(Token::COMMA));
+            consume(Token::GT, "'>' en turbofish");
+            consume(Token::LPAREN, "'(' tras turbofish");
+            delete primary;
+            FcallExp* fcall = new FcallExp();
+            fcall->nombre = funcName;
+            fcall->typeArgs = typeArgs;
+            if (!check(Token::RPAREN)) {
+                bool prev = noStructLit; noStructLit = false;
+                fcall->argumentos.push_back(parseExpression());
+                while(match(Token::COMMA)) fcall->argumentos.push_back(parseExpression());
+                noStructLit = prev;
+            }
+            consume(Token::RPAREN, ") cierre llamada turbofish");
+            primary = fcall;
+            continue;
+        }
         if (match(Token::LPAREN)) {
             FcallExp* fcall = new FcallExp();
             if (IdExp* id = dynamic_cast<IdExp*>(primary)) {
@@ -498,6 +546,29 @@ Exp* Parser::parsePostfix(){
 }
 
 Exp* Parser::parsePrimary(){
+    // Lambda: |params| body   o   || body  (cero parámetros)
+    if (check(Token::PIPE) || check(Token::OR)) {
+        vector<pair<string,string>> params;
+        if (match(Token::OR)) {
+            // '||' = lista de parámetros vacía
+        } else {
+            advance(); // '|'
+            if (!check(Token::PIPE)) {
+                do {
+                    consume(Token::IDENTIFIER, "nombre de parámetro de lambda");
+                    string pname = previous->text;
+                    string ptype = "i32"; // tipo por defecto
+                    if (match(Token::COLON)) ptype = parseTypeName();
+                    params.push_back({pname, ptype});
+                } while (match(Token::COMMA));
+            }
+            consume(Token::PIPE, "'|' de cierre de parámetros de lambda");
+        }
+        Exp* body = parseExpression();
+        LambdaExp* lam = new LambdaExp(body);
+        lam->params = params;
+        return lam;
+    }
     if (match(Token::NUMBER)) {
         string text = previous->text;
         if (text.find('.') != string::npos) {

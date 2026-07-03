@@ -87,6 +87,7 @@ class FcallExp : public Exp {
 public:
     string nombre;
     list<Exp*> argumentos;
+    vector<string> typeArgs; // argumentos de tipo genérico (turbofish/inferidos); vacío = no genérica
 
     FcallExp(){};
     ~FcallExp(){};
@@ -246,6 +247,7 @@ public:
     string nombre;
     vector<string> Tparametros;
     vector<string> Nparametros;
+    vector<string> typeParams; // parámetros de tipo genérico (p. ej. ["T"]); vacío = no genérica
     Body* cuerpo;
 
     FunDec() {};
@@ -393,6 +395,20 @@ public:
 
     DerefExp(Exp* p);
     ~DerefExp();
+
+    int accept(Visitor* visitor);
+};
+
+// ============================================================
+// Lambda (cuerpo-expresión):  |x: i32, y| x + y
+// ============================================================
+class LambdaExp : public Exp {
+public:
+    vector<pair<string, string>> params; // (nombre, tipo)
+    Exp* body;
+
+    LambdaExp(Exp* b);
+    ~LambdaExp();
 
     int accept(Visitor* visitor);
 };

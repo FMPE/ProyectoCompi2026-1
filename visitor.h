@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 #include <sstream>
+#include <set>
 
 struct SymbolInfo {
     int offset = 0;
@@ -59,6 +60,7 @@ public:
     virtual int visit(AddressOfExp* exp) = 0;
     virtual int visit(DerefExp* exp) = 0;
     virtual int visit(BoxNewExp* exp) = 0;
+    virtual int visit(LambdaExp* exp) = 0;
 };
 
 class TypeCheckerVisitor : public Visitor {
@@ -97,6 +99,7 @@ public:
     int visit(AddressOfExp* exp) override;
     int visit(DerefExp* exp) override;
     int visit(BoxNewExp* exp) override;
+    int visit(LambdaExp* exp) override;
 
 private:
     int currentSlotCount = 0;
@@ -138,6 +141,7 @@ public:
     int visit(AddressOfExp* exp) override;
     int visit(DerefExp* exp) override;
     int visit(BoxNewExp* exp) override;
+    int visit(LambdaExp* exp) override;
 
     Type::TType lastType = Type::NOTYPE;
     // Tipo (como string) del último rvalue generado; transporta el tipo
@@ -221,6 +225,28 @@ private:
     void pushBoxScope();
     void popBoxScopeAndFree(std::ostream& targetOut);
     void emitFreeAllBoxes(std::ostream& targetOut);
+
+    // ============================================
+    // Genéricos: monomorfización
+    // ============================================
+    std::unordered_map<std::string, FunDec*> genericTemplates; // nombre -> plantilla
+    // Instancias a emitir: (nombreBase, typeArgs concretos)
+    std::vector<std::pair<std::string, std::vector<std::string>>> instantiations;
+    std::string currentMonoLabel; // etiqueta a emitir para la instancia en curso
+    void collectInstantiations(Program* program);
+    std::string mangleGeneric(const std::string& base, const std::vector<std::string>& typeArgs) const;
+
+    // ============================================
+    // Lambdas (expansión en línea, alcance acotado)
+    // ============================================
+    struct LambdaInfo {
+        std::vector<std::string> paramNames;
+        std::vector<std::string> paramTypes;
+        std::vector<int> paramOffsets; // slots fijos reservados en la pila
+        Exp* body = nullptr;
+    };
+    std::unordered_map<std::string, LambdaInfo> lambdas;
+    std::set<std::string> expandingLambdas; // guardia anti-recursión
 };
 
 #endif // VISITOR_H

@@ -1,0 +1,160 @@
+CS3402
+Compiladores
+2026-1
+
+                                        Proyecto 2
+
+Indicaciones:
+
+       Los estudiantes deber�n trabajar en grupos y desarrollar uno de los proyectos propuestos
+       en el curso.
+
+       Cada proyecto deber� ser implementado de manera funcional, evidenciando la correcta apli-
+       caci�n de los conceptos de compiladores y lenguajes de programaci�n desarrollados durante
+       el curso.
+
+       El desarrollo deber� incluir documentaci�n t�cnica clara y estructurada, describiendo la
+       arquitectura del sistema, las decisiones de dise�o, las tecnolog�as utilizadas y los principales
+       componentes implementados.
+
+       Cada grupo deber� realizar una exposici�n t�cnica del proyecto, demostrando el funciona-
+       miento del sistema y explicando adecuadamente los componentes desarrollados, las decisio-
+       nes de implementaci�n y los resultados obtenidos.
+
+       Se recomienda el uso de herramientas modernas y buenas pr�cticas de ingenier�a de software
+       para la organizaci�n, implementaci�n y documentaci�n del proyecto.
+
+       Todos los integrantes del equipo deber�n participar activamente en el desarrollo del proyecto,
+       demostrando contribuciones reales, verificables y consistentes con el trabajo presentado.
+
+       Todos los integrantes del grupo deber�n demostrar capacidad de an�lisis, investigaci�n,
+       implementaci�n y comprensi�n profunda de los conceptos de compiladores y lenguajes de
+       programaci�n involucrados en el proyecto.
+
+       El uso de herramientas de inteligencia artificial estar� permitido �nicamente como apoyo
+       complementario durante el desarrollo del proyecto. Sin embargo, el trabajo deber� reflejar
+       comprensi�n t�cnica real por parte de todos los miembros del grupo. En caso de evidenciarse
+       dependencia excesiva de herramientas de IA, incapacidad para explicar el funcionamiento
+       del c�digo presentado o desconocimiento de los componentes implementados por parte de
+       uno o m�s integrantes, el proyecto ser� calificado con cero (0).
+
+       Los grupos deber�n cumplir con los objetivos m�nimos establecidos en el desarrollo del
+       proyecto. En caso de no alcanzarlos, el proyecto ser� calificado con cero (0).
+
+       En caso de detectarse que uno o m�s integrantes no han participado de manera efectiva en
+       el desarrollo del trabajo, el proyecto ser� calificado con cero (0).
+
+CS3402
+Compiladores
+2026-1
+
+Dise�o e Implementaci�n de un Compilador x86 con Optimizaci�n y Evalua-
+ci�n Comparativa
+
+El objetivo del presente proyecto es dise�ar e implementar un compilador completo para un len-
+guaje de programaci�n sobre arquitectura x86, integrando las etapas fundamentales del proceso
+de compilaci�n, desde el an�lisis l�xico y sint�ctico hasta la generaci�n de c�digo ensamblador
+y la optimizaci�n b�sica. Finalmente, el proyecto tiene como prop�sito fortalecer la capacidad
+de an�lisis, dise�o e implementaci�n de sistemas de software complejos, as� como promover la
+evaluaci�n experimental mediante la comparaci�n del compilador desarrollado con herramientas
+de uso extendido en la industria. Los estudiantes deber�n:
+
+       Seleccionar un lenguaje de programaci�n con caracter�sticas bien definidas y documentaci�n
+       formal. Este debe incluir, como m�nimo, las siguientes caracter�sticas:
+
+           � B�sicas:
+                 Tipos de datos b�sicos y definidos por el usuario.
+                 Variables y manejo de alcance (scope).
+                 Funciones.
+                 Estructuras de control
+                 Struct, arreglos y cadenas de caracteres (strings).
+
+           � Avanzadas:
+                 Punteros, direccionamiento de memoria y manejo de memoria din�mica.
+                 Tipos gen�ricos y plantillas (templates).
+                 Inferencia, conversi�n y promoci�n autom�tica de tipos.
+                 Arreglos multidimensionales y funciones lambda.
+
+       Implementar un compilador completo que incluya las fases de an�lisis l�xico, sint�ctico y
+       sem�ntico.
+
+       Implementar un sistema de verificaci�n de tipos y manejo de errores l�xicos, sint�cticos y
+       sem�nticos.
+
+       Generar c�digo ensamblador para arquitectura x86.
+
+       Aplicar t�cnicas b�sicas de optimizaci�n sobre el c�digo generado.
+
+       Desarrollar un conjunto de benchmarks para evaluar el rendimiento del compilador.
+
+       Realizar una comparaci�n experimental con compiladores de uso extendido como GCC,
+       Clang/LLVM, MSVC, Rustc o Go Compiler.
+
+       Analizar y documentar los resultados obtenidos mediante tablas, gr�ficos y discusi�n t�c-
+       nica.
+
+       Presentar y defender el proyecto mediante una exposici�n t�cnica.
+
+El m�ximo logro del proyecto consistir� en la implementaci�n de una aplicaci�n funcional del
+compilador desarrollado que permita demostrar, de manera integrada, las distintas fases del
+proceso de compilaci�n y las principales caracter�sticas del lenguaje implementado. Los grupos
+que logren desarrollar dicha aplicaci�n podr�n obtener hasta 3 puntos adicionales en la evaluaci�n
+final del curso. La aplicaci�n deber� incluir, como m�nimo, los siguientes componentes:
+CS3402
+Compiladores
+2026-1
+
+       Editor de c�digo para el lenguaje dise�ado.
+       Visualizaci�n del AST (Abstract Syntax Tree).
+       Generaci�n de c�digo ensamblador x86.
+       Ejecuci�n o simulaci�n del programa compilado.
+       Visualizaci�n de resultados de ejecuci�n.
+
+La r�brica de calificaci�n del proyecto se basa en los siguientes criterios:
+
+Criterio            Excelente             Bueno                 Regular              Deficiente           Pts
+
+Dise�o y Lexer      Lenguaje consisten-   Dise�o adecuado y     Dise�o limitado      Dise�o incompleto    2
+                    te y lexer robusto    lexer funcional con   o lexer con fallos   o lexer incorrecto.
+                    con manejo adecua-    pocos errores.        ocasionales.
+                    do de errores.
+
+Sintaxis y AST      Parser correcto,      Implementaci�n        Implementaci�n       Implementaci�n
+                    AST bien estruc-      funcional con leves   parcial o poco       incorrecta o incom- 2
+                    turado y tabla de     limitaciones.         organizada.          pleta.
+                    s�mbolos organiza-
+                    da.
+
+An�lisis Sem�ntico  Verificaci�n s�lida   Buen manejo se-       Validaci�n parcial. Escasa validaci�n.    1
+                    de tipos y errores.   m�ntico.
+
+Generaci�n x86      C�digo eficiente,     C�digo funcional      C�digo poco efi-     C�digo incorrecto o  3
+                    correcto y optimi-    con leves limitacio-  ciente.              incompleto.
+                    zado.                 nes.
+
+Caracter�sticas     Implementa correc-    Implementa varias     Implementaci�n       Muy pocas funcio-
+Avanzadas           tamente la mayor�a    funcionalidades       parcial.
+                    de funcionalidades    relevantes.                                nalidades imple-     2
+                    avanzadas.
+                                                                                     mentadas.
+
+Optimizaci�n        Implementa opti-      Implementa algu-      Optimizaci�n m�ni- No implementa          3
+                    mizaciones rele-      nas optimizaciones
+                    vantes y demuestra    funcionales.          ma.                  optimizaciones.
+                    mejoras medibles.
+
+Comparaci�n Co-     Benchmark riguro-     Comparaci�n ade-      Comparaci�n su-      No realiza compa-    2
+mercial             so y an�lisis s�lido  cuada con m�tricas    perficial.           raci�n.
+                    frente a compilado-   parciales.
+                    res comerciales.
+
+Reporte T�cnico     Documentaci�n         Documentaci�n         Documentaci�n        Documentaci�n        2
+                    t�cnica completa,     adecuada con algu-    parcial o poco       insuficiente.
+                    clara y bien estruc-  nos vac�os menores.   clara.
+                    turada.
+
+Exposici�n          Presentaci�n clara,   Buena presenta-       Presentaci�n limi-   Escaso dominio o     3
+                    dominio t�cnico y     ci�n y explicaci�n    tada o con poco      incapacidad de co-
+                    demostraci�n s�lida   adecuada del fun-     dominio del proyec-  municar el trabajo.
+                    del compilador.       cionamiento.          to.
+

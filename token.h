@@ -38,6 +38,7 @@ public:
         PLUS_ASSIGN, MINUS_ASSIGN, // += -=
         OR, AND,                 // || &&
         AMP,                     // & (referencia / address-of)
+        PIPE,                    // | (lambda params)
         NOT,                     // !
 
         // Operadores relacionales / igualdad

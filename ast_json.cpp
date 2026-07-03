@@ -65,6 +65,12 @@ int ASTJsonVisitor::visit(FunDec* function) {
     json << "{\n"; indent++;
     writeIndent(); json << "\"type\": \"Function\",\n";
     writeIndent(); json << "\"name\": " << jsonString(function->nombre) << ",\n";
+    writeIndent(); json << "\"typeParams\": [";
+    for (size_t i = 0; i < function->typeParams.size(); ++i) {
+        if (i) json << ", ";
+        json << jsonString(function->typeParams[i]);
+    }
+    json << "],\n";
     writeIndent(); json << "\"returnType\": " << jsonString(function->tipo) << ",\n";
     writeIndent(); json << "\"params\": [";
     for (size_t i = 0; i < function->Nparametros.size(); ++i) {
@@ -252,6 +258,12 @@ int ASTJsonVisitor::visit(FcallExp* exp) {
     json << "{\n"; indent++;
     writeIndent(); json << "\"type\": \"Call\",\n";
     writeIndent(); json << "\"name\": " << jsonString(exp->nombre) << ",\n";
+    writeIndent(); json << "\"typeArgs\": [";
+    for (size_t i = 0; i < exp->typeArgs.size(); ++i) {
+        if (i) json << ", ";
+        json << jsonString(exp->typeArgs[i]);
+    }
+    json << "],\n";
     writeIndent(); json << "\"args\": [";
     bool first = true;
     for (auto arg : exp->argumentos) {
@@ -326,6 +338,20 @@ int ASTJsonVisitor::visit(BoxNewExp* exp) {
     writeIndent(); json << "\"type\": \"BoxNew\",\n";
     writeIndent(); json << "\"valueType\": " << jsonString(exp->valueType) << ",\n";
     writeIndent(); json << "\"value\": "; exp->value->accept(this); json << "\n";
+    indent--; writeIndent(); json << "}";
+    return 0;
+}
+
+int ASTJsonVisitor::visit(LambdaExp* exp) {
+    json << "{\n"; indent++;
+    writeIndent(); json << "\"type\": \"Lambda\",\n";
+    writeIndent(); json << "\"params\": [";
+    for (size_t i = 0; i < exp->params.size(); ++i) {
+        if (i) json << ", ";
+        json << "{" << jsonString(exp->params[i].first) << ": " << jsonString(exp->params[i].second) << "}";
+    }
+    json << "],\n";
+    writeIndent(); json << "\"body\": "; exp->body->accept(this); json << "\n";
     indent--; writeIndent(); json << "}";
     return 0;
 }
