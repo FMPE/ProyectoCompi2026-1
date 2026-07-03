@@ -150,7 +150,7 @@ public:
     
     // Métodos para optimización
     void enableOptimizations(bool enable) { optimizationsEnabled = enable; }
-    void enableDAGOptimization(bool enable) { dagEnabled = enable; optimizer.setDAGOptimization(enable); }
+    void enableDAGOptimization(bool enable) { dagEnabled = enable; }
     void enablePeepholeOptimization(bool enable) { optimizer.setPeepholeOptimization(enable); }
     void printOptimizationStats(std::ostream& os);
     CodeOptimizer::Stats getOptimizationStats() const;
@@ -235,6 +235,15 @@ private:
     std::string currentMonoLabel; // etiqueta a emitir para la instancia en curso
     void collectInstantiations(Program* program);
     std::string mangleGeneric(const std::string& base, const std::vector<std::string>& typeArgs) const;
+
+    // ============================================================
+    // Eliminación de funciones muertas (dead-function elimination)
+    // ============================================================
+    // Conjunto de funciones alcanzables desde 'main' (y desde las instancias
+    // genéricas). Se calcula en generar() cuando las optimizaciones están
+    // activas; visit(Program) sólo emite las funciones no-genéricas presentes.
+    std::set<std::string> liveFunctions;
+    void computeLiveFunctions(Program* program);
 
     // ============================================
     // Lambdas (expansión en línea, alcance acotado)

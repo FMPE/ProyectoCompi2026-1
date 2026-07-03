@@ -12,19 +12,17 @@ main:
  movq $0, -16(%rbp)
  movabsq $4614253070214989087, %rax
  movq %rax, %xmm0
- movq %rax, %xmm0
  cvtsd2ss %xmm0, %xmm0
  movd %xmm0, %eax
  movl %eax, -8(%rbp)
  movabsq $4613303441197561744, %rax
  movq %rax, %xmm0
  movq %rax, -16(%rbp)
- movl -8(%rbp), %eax
- pushq %rax
  movabsq $4609434218613702656, %rax
  movq %rax, %xmm0
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -8(%rbp), %eax
+ popq %rcx
  movq %rax, %xmm0
  movq %rcx, %xmm1
  cvtss2sd %xmm0, %xmm0
@@ -34,12 +32,11 @@ main:
  cvtsd2ss %xmm0, %xmm0
  movd %xmm0, %eax
  movl %eax, -24(%rbp)
- movq -16(%rbp), %rax
- pushq %rax
  movabsq $4611686018427387904, %rax
  movq %rax, %xmm0
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movq -16(%rbp), %rax
+ popq %rcx
  movq %rax, %xmm0
  movq %rcx, %xmm1
  mulsd %xmm1, %xmm0

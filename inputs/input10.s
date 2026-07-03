@@ -10,16 +10,14 @@ suma_p:
  subq $88, %rsp
  movq %rdi, -8(%rbp)
  leaq -8(%rbp), %rax
- addq $0, %rax
+ addq $4, %rax
  movl (%rax), %eax
  cltq
  pushq %rax
  leaq -8(%rbp), %rax
- addq $4, %rax
  movl (%rax), %eax
  cltq
- movq %rax, %rcx
- popq %rax
+ popq %rcx
  addq %rcx, %rax
  jmp .L_return_suma_p
  movq $0, %rax

@@ -15,19 +15,18 @@ main:
  movq %rax, -16(%rbp)
 .L_for_begin_0:
  movq $10, %rax
- movq %rax, %rcx
+ movq $10, %rcx
  movq -16(%rbp), %rax
  cmpq %rcx, %rax
  jge .L_for_end_1
- movl -8(%rbp), %eax
- pushq %rax
  movq -16(%rbp), %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -8(%rbp), %eax
+ popq %rcx
  addq %rcx, %rax
  movl %eax, -8(%rbp)
  movq -16(%rbp), %rax
- addq $1, %rax
+ incq %rax
  movq %rax, -16(%rbp)
  jmp .L_for_begin_0
 .L_for_end_1:

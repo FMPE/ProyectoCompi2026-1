@@ -2,7 +2,7 @@
 
 **CS3402 Compiladores | UTEC | 2026-1**
 
-Compilador completo para un subconjunto de Rust con generación de ensamblador x86-64 (AT&T, System V ABI), optimización (DAG + Peephole + constant folding) y aplicación web integrada.
+Compilador completo para un subconjunto de Rust con generación de ensamblador x86-64 (AT&T, System V ABI), un conjunto de optimizaciones (constant folding en AST, orden Sethi-Ullman, eliminación de funciones muertas, CSE y peephole) y aplicación web integrada.
 
 ## Inicio rápido
 
@@ -35,7 +35,7 @@ Código fuente → Scanner → Parser → AST → Análisis semántico → Codeg
 |---|---|
 | Básicas | tipos primitivos, structs, funciones, if/while/for, arrays 1D, println |
 | Avanzadas | **inferencia de tipos** (`let x = 5`), **strings** (`String`), **arrays 2D** (`i32[3][3]`) |
-| Optimización | DAG (CSE), Peephole, constant folding/propagation |
+| Optimización | **constant folding (AST)**, **orden Sethi-Ullman**, **dead-function elimination**, CSE (a nivel de AST), peephole (strength reduction, comparación con 0, propagación de constantes) |
 
 ## Aplicación integrada (+3 pts)
 
@@ -50,7 +50,7 @@ La app web incluye los 5 componentes requeridos:
 ## Estructura del proyecto
 
 ```
-├── main.cpp, scanner.*, parser.*, ast.*, visitor.*, optimizer.*
+├── main.cpp, scanner.*, parser.*, ast.*, visitor.*, optimizer.*, constfold.*
 ├── compiler_api.*     # API JSON para la app web
 ├── ast_json.*         # Exportación AST → JSON
 ├── inputs/            # 21 casos de prueba

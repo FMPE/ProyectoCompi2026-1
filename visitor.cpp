@@ -1,6 +1,7 @@
 #include "visitor.h"
 
 #include "ast.h"
+#include "constfold.h"
 
 #include <stdexcept>
 #include <string>
@@ -203,7 +204,45 @@ void collectFcallsFromExp(Exp* exp, vector<FcallExp*>& out) {
         collectFcallsFromExp(ar->value, out);
     } else if (StructInitExp* si = dynamic_cast<StructInitExp*>(exp)) {
         for (auto& fld : si->fields) collectFcallsFromExp(fld.second, out);
+    } else if (LambdaExp* l = dynamic_cast<LambdaExp*>(exp)) {
+        collectFcallsFromExp(l->body, out);
     }
+}
+
+// ---- Sethi-Ullman: etiquetado y pureza (para ordenar operandos) ----
+// Etiqueta SU: hojas = 1; binaria = (l==r) ? l+1 : max(l,r).
+static int suLabel(Exp* e) {
+    if (!e) return 0;
+    if (BinaryExp* b = dynamic_cast<BinaryExp*>(e)) {
+        int l = suLabel(b->left), r = suLabel(b->right);
+        return (l == r) ? l + 1 : std::max(l, r);
+    }
+    return 1; // NumberExp, IdExp, FloatExp, BoolExp y demás hojas
+}
+
+// Un subárbol es "puro" si evaluarlo no produce efectos observables; sólo
+// entonces es seguro reordenar su evaluación sin alterar la semántica Rust
+// (evaluación izquierda→derecha). Llamadas, asignaciones, Box::new y lambdas
+// se consideran impuros.
+static bool expIsPure(Exp* e) {
+    if (!e) return true;
+    if (dynamic_cast<NumberExp*>(e) || dynamic_cast<FloatExp*>(e) ||
+        dynamic_cast<BoolExp*>(e)   || dynamic_cast<IdExp*>(e) ||
+        dynamic_cast<StringExp*>(e)) return true;
+    if (dynamic_cast<FcallExp*>(e) || dynamic_cast<BoxNewExp*>(e) ||
+        dynamic_cast<LambdaExp*>(e)) return false;
+    if (BinaryExp* b = dynamic_cast<BinaryExp*>(e)) {
+        if (b->op == ASSIGN_OP) return false;
+        return expIsPure(b->left) && expIsPure(b->right);
+    }
+    if (ArrayAccessExp* a = dynamic_cast<ArrayAccessExp*>(e))
+        return expIsPure(a->array) && expIsPure(a->index);
+    if (CastExp* c = dynamic_cast<CastExp*>(e))        return expIsPure(c->value);
+    if (FieldAccessExp* f = dynamic_cast<FieldAccessExp*>(e)) return expIsPure(f->object);
+    if (AddressOfExp* ao = dynamic_cast<AddressOfExp*>(e)) return expIsPure(ao->target);
+    if (DerefExp* d = dynamic_cast<DerefExp*>(e))      return expIsPure(d->ptr);
+    if (ArrayRepeatExp* ar = dynamic_cast<ArrayRepeatExp*>(e)) return expIsPure(ar->value);
+    return false; // desconocido → conservador (impuro)
 }
 
 // Infiere el tipo concreto de un argumento literal (para inferencia de genéricos)
@@ -595,11 +634,52 @@ void GenCodeVisitor::collectInstantiations(Program* program) {
 
 int GenCodeVisitor::generar(Program* program) {
     frameReservation.clear();
+    // Plegado de constantes en el AST antes del análisis de tipos y la codegen.
+    if (optimizationsEnabled) foldProgram(program);
     typeChecker.analyze(program);
     frameReservation = typeChecker.frameSlots;
     prepareStringLiterals(program);
     collectInstantiations(program);
+    // Eliminación de funciones muertas (alcanzabilidad desde 'main').
+    if (optimizationsEnabled) computeLiveFunctions(program);
     return program->accept(this);
+}
+
+void GenCodeVisitor::computeLiveFunctions(Program* program) {
+    liveFunctions.clear();
+    if (!program) return;
+
+    std::unordered_map<std::string, FunDec*> byName;
+    for (auto fn : program->fdlist)
+        if (fn) byName[fn->nombre] = fn;
+
+    // Seguridad: sin 'main' no hay raíz clara; conservar todas las funciones.
+    if (!byName.count("main")) {
+        for (auto& kv : byName) liveFunctions.insert(kv.first);
+        return;
+    }
+
+    std::vector<std::string> worklist;
+    auto addRoot = [&](const std::string& n) {
+        if (byName.count(n) && !liveFunctions.count(n)) {
+            liveFunctions.insert(n);
+            worklist.push_back(n);
+        }
+    };
+
+    addRoot("main");
+    // Las plantillas genéricas instanciadas también son raíces vivas: pueden
+    // llamar a funciones no-genéricas desde sus cuerpos.
+    for (auto& inst : instantiations) addRoot(inst.first);
+
+    while (!worklist.empty()) {
+        std::string n = worklist.back(); worklist.pop_back();
+        FunDec* fn = byName[n];
+        if (!fn || !fn->cuerpo) continue;
+        std::vector<FcallExp*> calls;
+        for (auto s : fn->cuerpo->stmlist) collectFcallsFromStm(s, calls);
+        for (auto fc : calls) addRoot(fc->nombre);
+    }
 }
 
 int GenCodeVisitor::visit(Program* program) {
@@ -635,9 +715,11 @@ int GenCodeVisitor::visit(Program* program) {
         }
     }
 
-    // Funciones normales (las plantillas genéricas se emiten monomorfizadas abajo)
+    // Funciones normales (las plantillas genéricas se emiten monomorfizadas abajo).
+    // Con optimizaciones activas, se omiten las funciones no alcanzables desde 'main'.
     for (auto functionDecl : program->fdlist) {
-        if (functionDecl && functionDecl->typeParams.empty()) {
+        if (functionDecl && functionDecl->typeParams.empty()
+            && (!optimizationsEnabled || liveFunctions.count(functionDecl->nombre))) {
             functionDecl->accept(this);
         }
     }
@@ -1221,14 +1303,31 @@ int GenCodeVisitor::visit(BinaryExp* exp) {
         }
     }
 
-    // Código general para otras expresiones
-    exp->left->accept(this);
-    Type::TType leftType = lastType;
-    targetOut << " pushq %rax\n";
-    exp->right->accept(this);
-    Type::TType rightType = lastType;
-    targetOut << " movq %rax, %rcx\n";
-    targetOut << " popq %rax\n";
+    // Código general para otras expresiones.
+    // Orden de evaluación estilo Sethi-Ullman: si ambos operandos son puros
+    // (sin efectos observables) y el derecho no es más ligero, se evalúa el
+    // derecho primero; al evaluar el izquierdo en último lugar queda ya en
+    // %rax y basta 'popq %rcx' para el derecho, ahorrando el 'movq %rax,%rcx'.
+    // Si algún operando es impuro, se conserva el orden canónico izq→der para
+    // no alterar la semántica de evaluación de Rust.
+    Type::TType leftType, rightType;
+    if (expIsPure(exp->left) && expIsPure(exp->right)
+        && suLabel(exp->right) >= suLabel(exp->left)) {
+        exp->right->accept(this);
+        rightType = lastType;
+        targetOut << " pushq %rax\n";
+        exp->left->accept(this);
+        leftType = lastType;
+        targetOut << " popq %rcx\n";        // %rax = izq, %rcx = der
+    } else {
+        exp->left->accept(this);
+        leftType = lastType;
+        targetOut << " pushq %rax\n";
+        exp->right->accept(this);
+        rightType = lastType;
+        targetOut << " movq %rax, %rcx\n";
+        targetOut << " popq %rax\n";
+    }
 
     bool isFloat = (leftType == Type::F32 || leftType == Type::F64 || rightType == Type::F32 || rightType == Type::F64);
 

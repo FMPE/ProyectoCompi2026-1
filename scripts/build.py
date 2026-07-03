@@ -8,7 +8,8 @@ import platform
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCES = [
     "main.cpp", "scanner.cpp", "token.cpp", "parser.cpp", "ast.cpp",
-    "visitor.cpp", "optimizer.cpp", "json_utils.cpp", "ast_json.cpp", "compiler_api.cpp"
+    "visitor.cpp", "optimizer.cpp", "constfold.cpp", "json_utils.cpp",
+    "ast_json.cpp", "compiler_api.cpp"
 ]
 
 OUT = "compiler.exe" if platform.system() == "Windows" else "compiler"

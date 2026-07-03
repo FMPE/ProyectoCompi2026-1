@@ -1,0 +1,18 @@
+fn nunca_usada(a: i32) -> i32 {
+    return a + a;
+}
+
+fn cuadrado(x: i32) -> i32 {
+    return x * x;
+}
+
+fn main() {
+    let k: i32 = 2 + 3 * 4;
+    let a: i32 = 7;
+    let b: i32 = 3;
+    let r: i32 = a - (b * b + a * b);
+    let s: i32 = cuadrado(a) + k;
+    println("k: ", k);
+    println("r: ", r);
+    println("s: ", s);
+}

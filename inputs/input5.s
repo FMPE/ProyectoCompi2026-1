@@ -28,38 +28,35 @@ main:
  movq %rsp, %rbp
  subq $96, %rsp
  movq $0, %rax
- movq %rax, %rsi
+ movq $0, %rsi
  movq $5, %rax
- movq %rax, %rdi
+ movq $5, %rdi
  call create_point
  movq %rax, -8(%rbp)
- leaq -8(%rbp), %rax
- addq $0, %rax
- movl (%rax), %eax
- cltq
- pushq %rax
  leaq -8(%rbp), %rax
  addq $4, %rax
  movl (%rax), %eax
  cltq
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ leaq -8(%rbp), %rax
+ movl (%rax), %eax
+ cltq
+ popq %rcx
  addq %rcx, %rax
  movl %eax, -16(%rbp)
 .L_while_begin_0:
- movl -16(%rbp), %eax
- pushq %rax
  movq $100, %rax
- movq %rax, %rcx
- popq %rax
+ pushq %rax
+ movl -16(%rbp), %eax
+ popq %rcx
  cmpq %rcx, %rax
  movq $0, %rax
  setl %al
  movzbq %al, %rax
- cmpq $0, %rax
+ testq %rax, %rax
  je .L_while_end_1
  movl -16(%rbp), %eax
- imulq $2, %rax
+ shlq $1, %rax
  movl %eax, -16(%rbp)
  jmp .L_while_begin_0
 .L_while_end_1:

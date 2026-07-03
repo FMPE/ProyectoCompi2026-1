@@ -9,16 +9,13 @@ main:
  movq %rsp, %rbp
  subq $96, %rsp
  movq $0, -8(%rbp)
- movq $1, %rax
- addq $2, %rax
+ movq $3, %rax
  movl %eax, -16(%rbp)
- movq $10, %rax
- subq $3, %rax
+ movq $7, %rax
  movl %eax, -12(%rbp)
  movq -16(%rbp), %rax
  movq %rax, -8(%rbp)
  leaq -8(%rbp), %rax
- addq $0, %rax
  movl (%rax), %eax
  cltq
  movq %rax, %rsi

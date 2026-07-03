@@ -62,8 +62,10 @@ int main(int argc, const char* argv[]) {
         }
 
         cout << "Generando codigo ensamblador en " << outputFilename << endl;
-        cout << (enableOptimizations ? "Optimizaciones: HABILITADAS (DAG + Peephole + Constant Folding)\n"
-                                     : "Optimizaciones: DESHABILITADAS\n");
+        cout << (enableOptimizations
+                     ? "Optimizaciones: HABILITADAS (constant folding AST, Sethi-Ullman, "
+                       "dead-function elim, CSE/DAG, peephole)\n"
+                     : "Optimizaciones: DESHABILITADAS\n");
 
         GenCodeVisitor codigo(outfile);
         codigo.enableOptimizations(enableOptimizations);
